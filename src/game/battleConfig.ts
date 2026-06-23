@@ -1,14 +1,14 @@
 export const BATTLE_CONFIG = {
   // 전투 시간 제한. 10초 전에는 실제 탈락을 막고, 30초에는 반드시 결과를 냅니다.
-  minEliminationTimeMs: 10000,
-  softProtectionEndMs: 10000,
-  maxBattleDurationMs: 30000,
+  minEliminationTimeMs: 7000,//10000
+  softProtectionEndMs: 7000, //10000
+  maxBattleDurationMs: 20000, //30000
   preEliminationEnergyFloorRatio: 0.07,
 
   // 시간대별 충돌 데미지. 초반은 화려하게 부딪히지만 에너지는 천천히 깎입니다.
-  earlyPhaseDamageMultiplier: 0.4,
-  midPhaseDamageMultiplier: 0.7,
-  latePhaseDamageMultiplier: 1,
+  earlyPhaseDamageMultiplier: 0.8, //0.4
+  midPhaseDamageMultiplier: 1, //0.7
+  latePhaseDamageMultiplier: 1.2, // 1
 
   // 살아 있는 팽이가 많을수록 충돌 빈도가 높으므로 개별 충돌 데미지를 낮춥니다.
   aliveCountDamageScaling: true,
