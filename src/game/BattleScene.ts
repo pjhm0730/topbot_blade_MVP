@@ -45,6 +45,7 @@ interface RuntimeTop {
   container: Phaser.GameObjects.Container;
   body: Phaser.GameObjects.Arc;
   marker: Phaser.GameObjects.Rectangle;
+  orderBadge: Phaser.GameObjects.Text;
   label: Phaser.GameObjects.Text;
   energyRing: Phaser.GameObjects.Graphics;
   energyBarBack: Phaser.GameObjects.Rectangle;
@@ -53,7 +54,6 @@ interface RuntimeTop {
   loserBadge: Phaser.GameObjects.Text;
   localHighlightRing?: Phaser.GameObjects.Graphics;
   localMarker?: Phaser.GameObjects.Triangle;
-  localBadge?: Phaser.GameObjects.Text;
 }
 
 interface PairCollisionHistory {
@@ -351,6 +351,7 @@ export class BattleScene extends Phaser.Scene {
         bladeSkinId: skin.id,
         skinName: skin.name,
         topType: player.topType,
+        selectionOrder: player.selectionOrder ?? index + 1,
         x,
         y,
         vx: Math.cos(launchAngle) * speed,
@@ -420,6 +421,19 @@ export class BattleScene extends Phaser.Scene {
         icon,
       ]);
       container.setDepth(isLocalPlayerTop ? BATTLE_CONFIG.localPlayerHighlightDepth + 1 : 8);
+      const orderBadge = this.add
+        .text(data.x, data.y - data.radius - 38, getBattleOrderText(data.selectionOrder, isLocalPlayerTop), {
+          fontFamily: "Arial, sans-serif",
+          fontSize: isLocalPlayerTop ? "12px" : "11px",
+          color: isLocalPlayerTop ? "#07111f" : "#f8fafc",
+          fontStyle: "900",
+          stroke: isLocalPlayerTop ? "#ffffff" : "#020617",
+          strokeThickness: isLocalPlayerTop ? 1 : 2,
+        })
+        .setOrigin(0.5)
+        .setPadding(isLocalPlayerTop ? 7 : 6, 2, isLocalPlayerTop ? 7 : 6, 2)
+        .setBackgroundColor(isLocalPlayerTop ? "rgba(255, 209, 102, 0.96)" : "rgba(7, 17, 31, 0.86)");
+      orderBadge.setDepth(BATTLE_CONFIG.finalLoserHighlightDepth + (isLocalPlayerTop ? 16 : 12));
       const label = this.add
         .text(data.x, data.y + data.radius + 14, player.nickname, {
           fontFamily: "Arial, sans-serif",
@@ -431,13 +445,14 @@ export class BattleScene extends Phaser.Scene {
         .setPadding(6, 2, 6, 2)
         .setBackgroundColor(isLocalPlayerTop ? "rgba(7, 17, 31, 0.9)" : "rgba(255, 255, 255, 0.72)");
       const energyRing = this.add.graphics();
-      const energyBarBack = this.add.rectangle(data.x, data.y + data.radius + 32, 54, 5, 0xd7dee8, 1);
+      const energyBarBack = this.add.rectangle(data.x, data.y + data.radius + 32, 54, 5, 0x020617, 0.96);
+      energyBarBack.setStrokeStyle(1, 0xdff6ff, 0.6);
       const energyBar = this.add.rectangle(
         data.x - 27,
         data.y + data.radius + 32,
         54,
         5,
-        isLocalPlayerTop ? BATTLE_CONFIG.localPlayerRingColor : primaryColor,
+        getEnergyColor(1),
         1,
       );
       energyBar.setOrigin(0, 0.5);
@@ -469,20 +484,6 @@ export class BattleScene extends Phaser.Scene {
           ? this.add.triangle(0, 0, 0, 0, -8, -12, 8, -12, BATTLE_CONFIG.localPlayerMarkerColor, 0.95)
           : undefined;
       localMarker?.setDepth(BATTLE_CONFIG.localPlayerHighlightDepth + 4);
-      const localBadge =
-        BATTLE_CONFIG.localPlayerHighlightEnabled && isLocalPlayerTop
-          ? this.add
-              .text(data.x, data.y - data.radius - 44, "내 팽이", {
-                fontFamily: "Arial, sans-serif",
-                fontSize: "12px",
-                color: "#07111f",
-                fontStyle: "900",
-              })
-              .setOrigin(0.5)
-              .setPadding(7, 2, 7, 2)
-              .setBackgroundColor("rgba(255, 209, 102, 0.94)")
-          : undefined;
-      localBadge?.setDepth(BATTLE_CONFIG.localPlayerHighlightDepth + 4);
 
       return {
         data,
@@ -507,6 +508,7 @@ export class BattleScene extends Phaser.Scene {
         container,
         body,
         marker,
+        orderBadge,
         label,
         energyRing,
         energyBarBack,
@@ -515,7 +517,6 @@ export class BattleScene extends Phaser.Scene {
         loserBadge,
         localHighlightRing,
         localMarker,
-        localBadge,
       };
     });
   }
@@ -900,15 +901,22 @@ export class BattleScene extends Phaser.Scene {
       runtimeTop.container.rotation += runtimeTop.spinDirection * visualSpin;
       runtimeTop.container.setAlpha(top.stopped ? 0.42 : 1);
       runtimeTop.marker.setAlpha(top.stopped ? 0.25 : 0.9);
+      const orderBadgeX = clamp(top.x, runtimeTop.isLocalPlayerTop ? 58 : 36, this.sceneWidth - (runtimeTop.isLocalPlayerTop ? 58 : 36));
+      const orderBadgeY = clamp(top.y - top.radius - 38, 14, this.sceneHeight - 18);
       const labelX = clamp(top.x, 50, this.sceneWidth - 50);
       const labelY = clamp(top.y + top.radius + 15, 18, this.sceneHeight - 24);
       const energyBarX = clamp(top.x, 30, this.sceneWidth - 30);
       const energyBarY = clamp(top.y + top.radius + 33, 28, this.sceneHeight - 8);
+      runtimeTop.orderBadge.setPosition(orderBadgeX, orderBadgeY);
+      runtimeTop.orderBadge.setAlpha(top.stopped ? 0.62 : 0.94);
       runtimeTop.label.setPosition(labelX, labelY);
       runtimeTop.label.setAlpha(top.stopped ? 0.55 : 1);
       runtimeTop.energyBarBack.setPosition(energyBarX, energyBarY);
+      runtimeTop.energyBarBack.setFillStyle(0x020617, top.stopped ? 0.58 : 0.96);
+      runtimeTop.energyBarBack.setStrokeStyle(1, 0xdff6ff, top.stopped ? 0.32 : 0.6);
       runtimeTop.energyBar.setPosition(energyBarX - 27, energyBarY);
       runtimeTop.energyBar.width = 54 * energyRatio;
+      runtimeTop.energyBar.setFillStyle(getEnergyColor(energyRatio), 1);
       runtimeTop.energyBar.setAlpha(top.stopped ? 0.35 : 1);
       this.drawEnergyRing(runtimeTop, energyRatio);
       this.syncLoserHighlight(runtimeTop, time);
@@ -921,9 +929,9 @@ export class BattleScene extends Phaser.Scene {
     const ring = runtimeTop.energyRing;
     ring.clear();
     ring.setPosition(top.x, top.y);
-    ring.lineStyle(3, 0xd7dee8, top.stopped ? 0.18 : 0.45);
+    ring.lineStyle(3, 0x020617, top.stopped ? 0.28 : 0.58);
     ring.strokeCircle(0, 0, top.radius + 7);
-    ring.lineStyle(4, runtimeTop.color, top.stopped ? 0.22 : 0.9);
+    ring.lineStyle(4, getEnergyColor(energyRatio), top.stopped ? 0.24 : 0.92);
     ring.beginPath();
     ring.arc(0, 0, top.radius + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * energyRatio, false);
     ring.strokePath();
@@ -963,7 +971,7 @@ export class BattleScene extends Phaser.Scene {
       .setPosition(
         clamp(top.x, 44, this.sceneWidth - 44),
         clamp(
-          top.y - top.radius - (runtimeTop.isLocalPlayerTop ? 63 : 43) - pulse * 2,
+          top.y - top.radius - 62 - pulse * 2,
           14,
           this.sceneHeight - 18,
         ),
@@ -999,10 +1007,6 @@ export class BattleScene extends Phaser.Scene {
     runtimeTop.localMarker?.setPosition(clamp(top.x, 18, this.sceneWidth - 18), markerY);
     runtimeTop.localMarker?.setAlpha(top.stopped ? 0.5 : 0.86 + pulse * 0.14);
     runtimeTop.localMarker?.setScale(1 + pulse * 0.1);
-
-    const badgeY = clamp(top.y - top.radius - 43 - pulse * 2, 12, this.sceneHeight - 18);
-    runtimeTop.localBadge?.setPosition(clamp(top.x, 42, this.sceneWidth - 42), badgeY);
-    runtimeTop.localBadge?.setAlpha(top.stopped ? 0.5 : 0.82 + pulse * 0.18);
   }
 
   private markFinalLoser(playerId: string): void {
@@ -1502,6 +1506,22 @@ function getAiTraits(topType: TopType): { aggression: number; centerBias: number
 
 function getPairKey(a: string, b: string): string {
   return [a, b].sort().join("|");
+}
+
+function getBattleOrderText(selectionOrder: number, isLocalPlayerTop: boolean): string {
+  return isLocalPlayerTop ? `${selectionOrder}번 내 팽이` : `${selectionOrder}번`;
+}
+
+function getEnergyColor(energyRatio: number): number {
+  if (energyRatio >= 0.6) {
+    return 0x2dd4bf;
+  }
+
+  if (energyRatio >= 0.3) {
+    return 0xf59e0b;
+  }
+
+  return 0xef4444;
 }
 
 function hexToNumber(hexColor: string): number {

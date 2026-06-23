@@ -34,6 +34,7 @@ export interface BattleTopData {
   bladeSkinId: string;
   skinName: string;
   topType: TopType;
+  selectionOrder: number;
   x: number;
   y: number;
   vx: number;
