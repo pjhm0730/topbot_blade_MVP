@@ -38,11 +38,11 @@ export const BATTLE_CONFIG = {
   targetRetargetMaxMs: 2000,
 
   // 속도 안정화. 박진감은 유지하되 위치를 추적할 수 있는 범위로 제한합니다.
-  maxTopSpeed: 300,
-  maxTopSpeedDuringBoost: 370,
+  maxTopSpeed: 500, //300
+  maxTopSpeedDuringBoost: 570,//370
   lowEnergyMaxSpeedMultiplier: 0.56,
   velocityDamping: 0.08,
-  postCollisionVelocityDamping: 10,
+  postCollisionVelocityDamping: 5,//10
   postWallBounceVelocityDamping: 0.84,
   maxImpulsePerCollision: 72,
   maxAccelerationPerFrame: 18,
@@ -53,7 +53,7 @@ export const BATTLE_CONFIG = {
   wallBounceMultiplier: 0.66,
 
   // 에너지 감소 조정값. 게임이 너무 빨리 끝나면 아래 값을 낮추세요.
-  collisionEnergyLossMultiplier: 0.78,
+  collisionEnergyLossMultiplier: 1,//0.78
   passiveDrainMultiplier: 0.82,
 
   // 같은 두 팽이가 짧게 반복 충돌할 때 energy damage를 제한합니다.
