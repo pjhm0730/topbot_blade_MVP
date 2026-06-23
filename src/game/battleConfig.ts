@@ -6,9 +6,9 @@ export const BATTLE_CONFIG = {
   preEliminationEnergyFloorRatio: 0.07,
 
   // 시간대별 충돌 데미지. 초반은 화려하게 부딪히지만 에너지는 천천히 깎입니다.
-  earlyPhaseDamageMultiplier: 0.8, //0.4
-  midPhaseDamageMultiplier: 1, //0.7
-  latePhaseDamageMultiplier: 1.2, // 1
+  earlyPhaseDamageMultiplier: 0.9, //0.4
+  midPhaseDamageMultiplier: 1.2, //0.7
+  latePhaseDamageMultiplier: 1.5, // 1
 
   // 살아 있는 팽이가 많을수록 충돌 빈도가 높으므로 개별 충돌 데미지를 낮춥니다.
   aliveCountDamageScaling: true,
