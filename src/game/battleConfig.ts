@@ -49,7 +49,7 @@ export const BATTLE_CONFIG = {
 
   // 반동 조정값. 반동이 너무 강하면 아래 세 값을 먼저 낮추세요.
   collisionRestitution: 4, //1.2
-  collisionImpulseMultiplier: 1.5, //1.2
+  collisionImpulseMultiplier: 3, //1.2
   wallBounceMultiplier: 0.66,
 
   // 에너지 감소 조정값. 게임이 너무 빨리 끝나면 아래 값을 낮추세요.
