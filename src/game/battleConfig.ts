@@ -7,8 +7,8 @@ export const BATTLE_CONFIG = {
 
   // 시간대별 충돌 데미지. 초반은 화려하게 부딪히지만 에너지는 천천히 깎입니다.
   earlyPhaseDamageMultiplier: 0.9, //0.4
-  midPhaseDamageMultiplier: 1.2, //0.7
-  latePhaseDamageMultiplier: 1.5, // 1
+  midPhaseDamageMultiplier: 1.4, //0.7
+  latePhaseDamageMultiplier: 1.6, // 1
 
   // 살아 있는 팽이가 많을수록 충돌 빈도가 높으므로 개별 충돌 데미지를 낮춥니다.
   aliveCountDamageScaling: true,
@@ -25,27 +25,27 @@ export const BATTLE_CONFIG = {
   },
 
   // 이동 AI. 충돌이 적으면 중앙/타겟 유도가 자연스럽게 강해집니다.
-  centerAttractionStrength: 100, //52
-  targetSeekingStrength: 57, //48
-  randomSteeringStrength: 26, //19
+  centerAttractionStrength: 125, //52
+  targetSeekingStrength: 82, //48
+  randomSteeringStrength: 36, //19
   boundaryCorrectionStrength: 78,
-  battleStartBoost: 1.22,
+  battleStartBoost: 1.45,//1.22
   battleStartBoostDuration: 4.5,
-  minMoveSpeed: 64,
+  minMoveSpeed: 88,//64
   noCollisionBoostDelay: 2,
   noCollisionBoostMultiplier: 1.45,
   targetRetargetMinMs: 1000,
   targetRetargetMaxMs: 2000,
 
   // 속도 안정화. 박진감은 유지하되 위치를 추적할 수 있는 범위로 제한합니다.
-  maxTopSpeed: 500, //300
-  maxTopSpeedDuringBoost: 570,//370
+  maxTopSpeed: 620, //300
+  maxTopSpeedDuringBoost: 720,//370
   lowEnergyMaxSpeedMultiplier: 0.56,
   velocityDamping: 0.08,
   postCollisionVelocityDamping: 5,//10
   postWallBounceVelocityDamping: 0.84,
   maxImpulsePerCollision: 72,
-  maxAccelerationPerFrame: 18,
+  maxAccelerationPerFrame: 28,//18
 
   // 반동 조정값. 반동이 너무 강하면 아래 세 값을 먼저 낮추세요.
   collisionRestitution: 4, //1.2
@@ -53,7 +53,7 @@ export const BATTLE_CONFIG = {
   wallBounceMultiplier: 0.66,
 
   // 에너지 감소 조정값. 게임이 너무 빨리 끝나면 아래 값을 낮추세요.
-  collisionEnergyLossMultiplier: 1,//0.78
+  collisionEnergyLossMultiplier: 1.28,//0.78
   passiveDrainMultiplier: 0.82,
 
   // 같은 두 팽이가 짧게 반복 충돌할 때 energy damage를 제한합니다.
