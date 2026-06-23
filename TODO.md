@@ -1,0 +1,38 @@
+# TODO
+
+- Supabase 연동 시 `localPlayerId`를 실제 player id와 연결
+- 실제 멀티플레이에서 신규 player 생성 시 랜덤 닉네임 자동 부여
+- 닉네임 중복 방지 로직 강화
+- 금칙어/부적절한 닉네임 필터링
+- 각 모바일 기기에서 자기 플레이어만 `launchPower` 저장
+- Supabase 연동 시 각 기기의 실제 player id를 `localPlayerId`와 연결
+- 실제 멀티플레이에서 각 기기별 내 팽이 하이라이트 확인
+- host-authoritative battle result 계산
+- 실제 여러 기기 테스트
+- 실제 모바일 가로모드 기기 테스트
+- 실제 모바일 기기에서 10명 전투 속도 체감 테스트
+- `maxTopSpeed` 추가 튜닝
+- electric arc 가시성/빈도 추가 튜닝
+- 실제 모바일 기기에서 BGM unlock과 볼륨 테스트
+- iPhone Safari / Android Chrome에서 BGM 전환 확인
+- 10명 실제 모바일 UI 가독성 테스트
+- 10명 전투 중 내 팽이 배지, 닉네임, energy bar 겹침 튜닝
+- 10명 전투에서 내 팽이/꼴등 후보 하이라이트 겹침 가독성 테스트
+- 내 팽이/꼴등 후보 하이라이트 겹침 추가 확인
+- Result 10명 compact card에서 꼴등/내 결과 배지 가독성 추가 확인
+- BGM 사운드 디자인 추가 개선
+- 작은 화면에서 arena와 HUD 겹침 추가 확인
+- iPhone Safari / Android Chrome에서 사운드 활성화 테스트
+- 실제 플레이 테스트 후 12~25초 게임 길이 밸런스 추가 조정
+- 플레이어 수별 damage scaling 추가 튜닝
+- 실제 플레이 테스트 후 사운드 볼륨 밸런싱
+- 모바일 브라우저에서 AudioContext 활성화 테스트
+- 사운드 중복 재생/cleanup 추가 확인
+- 추후 더 좋은 오리지널 음원 제작 가능
+- 충돌감 추가 튜닝
+- 스킨 가독성 테스트
+- 스킨 중복/매칭 UX 추가 개선
+- 충돌 애니메이션 개선
+- Supabase 방 만들기/입장 기능
+- 실시간 멀티플레이
+- Vercel 무료 배포

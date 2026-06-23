@@ -1,0 +1,235 @@
+# PROJECT_STATUS
+
+## 현재 상황 요약
+
+- 프로젝트 폴더: `C:\Users\USER\Documents\top_blade_MVP`
+- 프로젝트 이름: `top_blade_MVP`
+- 현재 버전은 실제 멀티플레이가 아닌 local mock mode MVP입니다.
+- `npm install`은 이미 완료되어 있으며 `node_modules`와 `package-lock.json`이 있습니다.
+- 로컬 접속 주소: `http://127.0.0.1:5173/`
+- `npm.cmd run build`가 성공했습니다.
+- Supabase 멀티플레이는 아직 구현 전입니다.
+
+## 최근 수정 사항
+
+- 팽이 AI 움직임을 개선했습니다.
+- center attraction, target seeking, random steering, boundary correction을 적용했습니다.
+- 충돌이 없을 때 자연스럽게 중앙/타겟 유도 강도가 올라가도록 했습니다.
+- 초기 배치와 초기 속도, battle start boost를 조정해 초반 충돌 빈도를 높였습니다.
+- 최소 이동 속도를 추가해 에너지가 충분한 팽이는 너무 빨리 느려지지 않게 했습니다.
+- collision restitution과 impulse를 강화해 충돌 후 더 탕탕 튕기는 느낌을 추가했습니다.
+- collision damage cooldown을 추가해 같은 두 팽이가 겹친 상태에서 에너지가 비정상적으로 빠르게 깎이지 않게 했습니다.
+- 벽 충돌도 더 탱탱하게 튕기도록 조정했습니다.
+- spark particle, impact flash, camera shake, `쾅!`/`탕!` 텍스트를 추가했습니다.
+- 팽이 내부에 비대칭 패턴과 하이라이트를 추가해 회전 방향이 잘 보이게 했습니다.
+- 시각적 회전속도를 크게 높이고, 낮은 에너지에서 wobble이 강해지도록 했습니다.
+- energy ring과 energy bar를 함께 표시하도록 개선했습니다.
+- `localPlayerId` 기반 Launch 구조를 추가했습니다.
+- Launch 화면에서 현재 테스트 플레이어만 직접 발사할 수 있게 했습니다.
+- `개발 테스트용: 모든 플레이어 자동 발사` 버튼을 mock/debug 기능으로 명확히 표시했습니다.
+- 전투 밸런스 조정값을 `src/game/battleConfig.ts`로 분리했습니다.
+- 반복 플레이 후 Battle이 바로 Result로 넘어갈 수 있는 상태 누수 위험을 줄이기 위해 Phaser Scene cleanup과 React Phaser instance cleanup을 보강했습니다.
+- 새 Battle 시작 시 cooldown map, visual cooldown, target state, runtime top 목록, timer/tween 상태가 초기화됩니다.
+- 10초 전 탈락 방지 로직을 적용했습니다.
+- 10초 이후부터 실제 stopped/Result 전환이 가능하도록 정리했습니다.
+- aliveCount 기반 damage scaling을 적용했습니다.
+- 충돌 반동 값을 낮추고, 타격감은 spark/flash/camera shake/impact text 중심으로 보강했습니다.
+- ASML/EUV/반도체 느낌의 랜덤 닉네임 생성 유틸을 추가했습니다.
+- Mock Lobby 기본 플레이어 이름에 랜덤 닉네임을 적용했습니다.
+- Mock Lobby에 전체 `ASML 스타일 이름 다시 뽑기` 버튼과 개별 `랜덤` 버튼을 추가했습니다.
+- 닉네임 후보는 공개적인 일반 반도체/리소그래피 용어 느낌만 사용하고, 실제 고객사명/장비 serial/내부 프로젝트명/내부 에러코드는 사용하지 않습니다.
+- Web Audio API 기반 AudioManager를 추가했습니다.
+- Launch 화면에 `고~~` charge-up 사운드와 `고~~ 슛!` 발사 연출을 추가했습니다.
+- Battle 화면에 전투 배경음 loop를 추가했습니다.
+- 팽이끼리 충돌할 때 intensity 기반 메탈 충돌음을 재생하도록 연결했습니다.
+- 벽 충돌에도 약한 충돌음을 연결했습니다.
+- 전역 사운드 On/Off 버튼과 효과음/배경음 볼륨 슬라이더를 추가했습니다.
+- Battle 화면에 모바일에서도 누르기 쉬운 간단 음소거 버튼을 추가했습니다.
+- 강한 충돌에 electric arc 번개 이펙트를 추가했습니다.
+- Battle 종료, Scene shutdown, Component unmount 시 BGM과 전기 아크 그래픽이 정리되도록 보강했습니다.
+- 모바일 가로모드 중심 레이아웃과 세로모드 권장 안내를 추가했습니다.
+- electric arc 번개 이펙트를 흰 core line, 파란 glow line, 노란 spark point 조합으로 더 잘 보이게 개선했습니다.
+- BGM 기본 볼륨과 내부 pulse gain을 높여 Battle 진입 후 존재감이 더 느껴지도록 조정했습니다.
+- 팽이 타입/능력치 차이를 제거하고 모든 팽이에 동일 base stats를 적용했습니다.
+- `bladeSkinId` 기반 blade skin 시스템을 추가했습니다.
+- Lobby, Launch, Result, Battle 화면에 팽이 스킨/패턴 표시를 적용했습니다.
+- 닉네임 키워드 기반 ASML/EUV/반도체 테마 skin matching을 적용했습니다.
+- Lobby에 `팽이 랜덤 선택` 버튼을 추가했습니다.
+- 전체 배경과 Battle arena 배경을 어두운 SF/웨이퍼 링/그리드 느낌으로 개선했습니다.
+- 사운드 패널을 기본 floating 버튼 + 필요 시 열리는 compact popover 구조로 변경했습니다.
+- 모바일 가로모드 Lobby에서 10명 플레이어 카드가 5 x 2 compact grid로 보이도록 조정했습니다.
+- Battle 화면의 왼쪽 큰 설명 패널을 compact HUD로 줄이고 arena canvas가 화면 대부분을 차지하도록 확대했습니다.
+- Phaser game 기준 크기를 정사각형 arena에 맞추고 ResizeObserver / resize / orientationchange 시 scale refresh가 되도록 보강했습니다.
+- Launch / Result 화면도 모바일 가로모드에서 핵심 조작과 결과가 더 압축되어 보이도록 조정했습니다.
+- Battle 화면에서 `localPlayerId`에 해당하는 내 팽이를 펄스 링, `내 팽이` 배지, 시작 포커스 큐로 강조하도록 개선했습니다.
+- 내 팽이 강조는 능력치/충돌 판정에 영향을 주지 않는 시각 효과로만 적용했습니다.
+- Battle 화면에서 살아 있는 팽이 중 energy 비율이 가장 낮은 현재 꼴등 후보를 빨간 `위험!` 링과 배지로 표시하도록 추가했습니다.
+- 최종 꼴등이 확정되는 순간 해당 팽이에 두꺼운 빨간 링, 붉은 glow, shockwave, `꼴등!`/`음료수 담당!` 라벨을 표시하도록 추가했습니다.
+- 내 팽이가 꼴등 후보 또는 최종 꼴등인 경우에도 `내 팽이` 하이라이트와 빨간 위험/꼴등 하이라이트가 함께 보이도록 이중 표시를 처리했습니다.
+- Result 화면에 꼴등 팽이 대형 스킨 미리보기와 `꼴등` 배지를 추가했습니다.
+- Result 순위 목록에 각 플레이어의 팽이 스킨 미리보기를 표시하고, 현재 테스트 플레이어에는 `내 결과` 배지를 표시하도록 개선했습니다.
+- 모바일 가로모드 Result compact card가 10명 목록에서도 스킨 미리보기와 배지를 담을 수 있도록 레이아웃을 조정했습니다.
+- BGM을 Battle 컴포넌트 내부 start/stop 방식에서 App 화면 상태 기반 전역 BGM 상태 머신으로 변경했습니다.
+- Home / Lobby / Launch / Result에서는 로비 BGM, Battle에서는 전투 BGM으로 fade 전환되도록 분리했습니다.
+- 첫 사용자 클릭/터치 이후 AudioContext unlock이 일어나고, 현재 화면 상태에 맞는 BGM이 재생되도록 정리했습니다.
+- 현재 활성 BGM loop를 하나만 유지하도록 해 반복 플레이 시 BGM 중복 재생 위험을 줄였습니다.
+- 사운드 팝오버에 현재 BGM 상태 표시를 추가했습니다.
+- 팽이 최대 이동 속도 제한을 추가했습니다.
+- 전투 시작 boost 구간과 일반 전투 구간의 최대 속도를 분리했습니다.
+- 에너지가 낮아질수록 최대 속도가 자연스럽게 낮아지도록 했습니다.
+- 매 프레임 velocity damping과 AI steering 가속 상한을 적용했습니다.
+- collision impulse에 `maxImpulsePerCollision` 상한과 반복 충돌 impulse penalty를 적용했습니다.
+- 팽이끼리 충돌한 직후 velocity clamp와 post-collision damping을 적용했습니다.
+- 벽 충돌 후 post-wall-bounce damping과 velocity clamp를 적용했습니다.
+- 벽 충돌 spark/effect에도 cooldown을 적용해 벽 근처에서 이펙트가 과하게 쌓이지 않게 했습니다.
+- electric arc / spark / impact text의 동시 표시 개수, 강도 기준, 쿨다운을 추가해 화면이 이펙트로 덮이는 문제를 줄였습니다.
+- 내 팽이/꼴등 후보 하이라이트가 이펙트에 묻히지 않도록 electric arc 개수와 alpha를 낮추고 spark depth를 정리했습니다.
+
+## 현재 구현된 기능
+
+- React + Vite + TypeScript 프로젝트 구조
+- Phaser 기반 2D 탑뷰 전투 화면
+- Home screen
+- Mock Lobby screen
+- Launch screen
+- Battle screen
+- Result screen
+- 2~10명 로컬 플레이어 설정
+- 닉네임 수정
+- ASML/EUV 스타일 랜덤 닉네임 자동 생성
+- 개별/전체 랜덤 닉네임 다시 뽑기
+- 팽이 스킨 미리보기
+- 팽이 랜덤 선택
+- 닉네임 키워드 기반 팽이 스킨 매칭
+- 모든 팽이 동일 base stats 적용
+- local mock mode용 현재 테스트 플레이어 선택
+- 내 플레이어만 직접 Launch 가능
+- 개발 테스트용 모든 플레이어 자동 발사
+- 발사 타이밍 바와 `launchPower` 계산
+- 원형 경기장 벽 튕김
+- 팽이끼리 단순 원형 충돌
+- knockback, energy 감소, spark effect
+- center attraction / target seeking / random steering 기반 전투 유도 이동
+- collision restitution / impulse 기반 반발감
+- impact flash / camera shake / impact text
+- Web Audio API 기반 발사음 / 충돌음 / 벽 충돌음 / 로비 BGM / 전투 BGM
+- 화면 상태 기반 전역 BGM 상태 머신
+- 첫 사용자 interaction 이후 BGM unlock 처리
+- BGM 중복 재생 방지
+- 사운드 On/Off 및 효과음/배경음 볼륨 조절
+- 사운드 패널의 현재 BGM 상태 표시
+- 기본 버튼 + 팝오버 방식의 compact 사운드 패널
+- 강한 충돌 electric arc 번개 이펙트
+- 모바일 가로모드 우선 UI와 세로모드 안내
+- 모바일 가로모드 Lobby 10명 compact grid
+- 모바일 가로모드 Battle 대형 arena layout
+- 빠른 시각 회전과 회전 패턴
+- energy ring / energy bar / 닉네임 표시
+- Battle 화면의 내 팽이 하이라이트와 시작 포커스 큐
+- Battle 화면의 현재 꼴등 후보 빨간 위험 하이라이트
+- 최종 꼴등 확정 시 빨간 shockwave / final loser 하이라이트
+- 내 팽이와 꼴등 후보/최종 꼴등 이중 하이라이트
+- 최대 속도 제한과 energy 기반 max speed 조정
+- collision impulse clamp와 반복 충돌 impulse penalty
+- wall bounce 이후 velocity 안정화
+- spark / electric arc / impact text 과다 생성 제한
+- 가장 먼저 멈춘 플레이어를 꼴등으로 표시
+- 30초 안에 아무도 멈추지 않으면 남은 에너지가 가장 낮은 플레이어를 꼴등으로 표시
+- 결과 화면에 `오늘의 음료수 담당: {nickname}` 표시
+- 결과 화면의 꼴등 팽이 대형 미리보기
+- 결과 순위 목록의 플레이어별 팽이 미리보기
+- 결과 화면의 `꼴등` / `내 결과` 배지 표시
+
+## 확인 완료
+
+- `npm.cmd ls --depth=0` 정상
+- `npm.cmd run build` 성공
+- 이전 확인 기준 `http://127.0.0.1:5173/` HTTP 200 확인
+- 이전 확인 기준 in-app browser에서 Home 화면 렌더링 확인
+- 이전 확인 기준 in-app browser에서 Mock Lobby 진입 확인
+- 이번 변경 후 in-app browser에서 Home → Lobby → Launch → Battle → Result 전체 흐름 확인
+- Launch 화면에서 `내 팽이 Launch`와 `개발 테스트용: 모든 플레이어 자동 발사` 버튼 확인
+- Battle 화면에서 Phaser canvas 렌더링 확인
+- Result 화면에서 `오늘의 음료수 담당` 문구 확인
+- 브라우저 콘솔 에러 없음 확인
+- 이번 변경 후 `npm.cmd run build` 성공
+- 사운드 시스템 및 electric arc 추가 후 `npm.cmd run build` 성공
+- 사운드 패널 렌더링 확인: `사운드 켜짐/꺼짐`, `효과음`, `배경음` 슬라이더 표시
+- Launch 화면에서 `고~~` charge cue와 `고~~ 슛!` start cue 표시 확인
+- Battle 화면에서 Phaser canvas와 간단 음소거 버튼 표시 확인
+- 사운드 On/Off 버튼이 Home/Battle 양쪽에서 함께 상태 변경되는 것 확인
+- 사운드/electric arc 변경 후 Home → Lobby → Launch → Battle → Result 전체 흐름 확인
+- 반복 플레이에서 Battle 재진입 시 canvas 1개만 생성되고 Result 전환 후 canvas가 제거되는 것 확인
+- 사운드/electric arc 변경 후 브라우저 콘솔 에러 없음 확인
+- blade skin 시스템 추가 후 `npm.cmd run build` 성공
+- 팽이 타입 선택 UI 제거 확인
+- Lobby/Launch/Result 화면의 스킨 미리보기 표시 확인
+- Battle 화면의 Phaser canvas 렌더링과 스킨 렌더링 로직 연결 확인
+- Mock Lobby의 `팽이 랜덤 선택` 버튼 동작 확인
+- Mock Lobby에서 2명, 4명, 8명, 10명 플레이어 수 변경 시 랜덤 닉네임과 스킨 입력 확인
+- 모바일 가로모드 레이아웃과 세로모드 `가로모드로 돌리면 더 잘 보여요` 안내 확인
+- 2026-06-23 in-app browser 반복 테스트 완료
+- 2인 테스트: 약 30.5초에 Result 표시, 10초 이전 종료 없음, 콘솔 에러 없음
+- 4인 테스트: 약 30.5초에 Result 표시, 10초 이전 종료 없음, 콘솔 에러 없음
+- 8인 테스트: 약 30.5초에 Result 표시, 10초 이전 종료 없음, 콘솔 에러 없음
+- Result 화면의 `다시 하기`로 재전투 실행: 약 30.7초에 Result 표시, 즉시 Result 재발 없음, 콘솔 에러 없음
+- Mock Lobby에서 2명, 4명, 8명, 10명 플레이어 수 변경 시 랜덤 닉네임 입력 확인
+- Mock Lobby에서 닉네임 직접 수정, 전체 랜덤 이름 다시 뽑기, 개별 랜덤 이름 다시 뽑기 확인
+- 랜덤 닉네임 변경 후 Home → Lobby → Launch → Battle → Result 전체 흐름 확인
+- 2인 전체 흐름 테스트: 약 27.4초에 Result 표시, 10초 이전 종료 없음, 콘솔 에러 없음
+- compact UI 변경 후 852 x 393 모바일 가로모드 기준 사운드 버튼 기본 표시 확인
+- compact UI 변경 후 사운드 팝오버 열기/닫기 및 Lobby `게임 시작` 버튼 비가림 확인
+- compact UI 변경 후 Lobby 10명 5 x 2 grid 표시 확인, body/document 세로 overflow 없음
+- compact UI 변경 후 Launch 10명 화면에서 body 세로 overflow 없음 확인
+- compact UI 변경 후 Battle canvas가 852 x 393 기준 화면 높이의 약 88%를 차지하고 중앙 정렬되는 것 확인
+- compact UI 변경 후 Battle 사운드 버튼이 arena와 겹치지 않는 것 확인
+- compact UI 변경 후 Result 10명 compact card list 표시 확인, body 세로 overflow 없음
+- compact UI 변경 후 1280 x 720 데스크톱 smoke test에서 가로 overflow 없음과 콘솔 에러 없음 확인
+- 속도/이펙트 안정화 변경 후 `npm.cmd run build` 성공
+- 속도/이펙트 안정화 변경 후 852 x 393 모바일 가로모드에서 2명, 4명, 8명, 10명 Battle → Result 흐름 확인
+- 2명, 4명, 8명, 10명 테스트 모두 Battle canvas 1개 생성, Result 전환, `오늘의 음료수 담당` 표시 확인
+- 2명, 4명, 8명, 10명 테스트 모두 브라우저 콘솔 에러 없음 확인
+
+## 현재 알려진 주의 사항
+
+- Phaser가 포함되어 프로덕션 번들 크기 경고가 표시됩니다.
+- 현재 경고는 빌드 실패가 아니며 MVP 실행에는 영향이 없습니다.
+- 전투 박진감은 아직 체감 튜닝이 더 필요할 수 있습니다.
+- `maxTopSpeed`, `maxImpulsePerCollision`, electric arc 빈도는 실제 모바일 10명 전투 체감 기준으로 추가 튜닝이 필요할 수 있습니다.
+- 목표 게임 길이는 12~25초지만 실제 체감 테스트 후 추가 조정이 필요할 수 있습니다.
+- 2인/4인 일부 라운드는 30초 제한에 가깝게 끝날 수 있어, 더 짧은 체감을 원하면 10초 이후 damage 계수와 passive drain을 조금 올리는 튜닝이 필요합니다.
+- 실제 iPhone Safari / Android Chrome 가로모드 테스트는 아직 필요합니다.
+- 실제 iPhone Safari / Android Chrome에서 첫 터치 후 BGM unlock과 로비/전투 BGM 전환 확인이 필요합니다.
+- BGM 실제 체감 볼륨은 기기 스피커 기준으로 추가 조정이 필요할 수 있습니다.
+- 실제 여러 기기 멀티플레이는 아직 없습니다.
+
+## 아직 구현되지 않은 기능
+
+- 실제 멀티플레이
+- Supabase 방 만들기/입장
+- 실시간 전투 상태 동기화
+- host-authoritative battle result 계산
+- 로그인
+- 스킨별 가독성 세부 튜닝
+- 모바일 터치 UX 세부 개선
+- 10명 전투 중 닉네임/내 팽이 하이라이트 겹침 세부 튜닝
+- 10명 전투 중 내 팽이/꼴등 후보 이중 하이라이트 가독성 세부 튜닝
+- 실제 모바일 기기에서 10명 전투 속도 체감 테스트
+- maxTopSpeed 추가 튜닝
+- electric arc 가시성/빈도 추가 튜닝
+- Vercel 배포
+- 배포 자동화
+
+## 다음 작업 추천
+
+- Home → Lobby → Launch → Battle → Result 전체 플로우를 브라우저에서 다시 확인
+- Battle 화면에서 실제 체감 기준으로 AI 힘과 충돌 반발값 튜닝
+- 실제 모바일 가로모드 기기에서 UI와 사운드 활성화 테스트
+- iPhone Safari / Android Chrome에서 BGM unlock과 로비/전투 전환 확인
+- BGM 사운드 디자인 추가 개선
+- 스킨별 회전 중 가독성 테스트
+- 10명 전투에서 내 팽이 하이라이트, 꼴등 후보 하이라이트, 닉네임, energy bar 겹침 추가 확인
+- Supabase 방 만들기/입장 mock UI 추가
+- Supabase 스키마 설계
+- 모바일 기기 2대 이상에서 실제 멀티플레이 흐름 설계
+- Vercel 무료 배포 설정
