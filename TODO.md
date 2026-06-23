@@ -10,6 +10,7 @@
 - host-authoritative battle result 계산
 - 실제 여러 기기 테스트
 - 실제 모바일 가로모드 기기 테스트
+- 실제 모바일에서 한 기기로 여러 명이 Lobby 선택 순번을 지정하는 흐름 테스트
 - 실제 모바일 기기에서 10명 전투 속도 체감 테스트
 - `maxTopSpeed` 추가 튜닝
 - electric arc 가시성/빈도 추가 튜닝

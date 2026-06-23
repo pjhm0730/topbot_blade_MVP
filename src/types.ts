@@ -6,6 +6,7 @@ export interface PlayerConfig {
   id: string;
   nickname: string;
   bladeSkinId: string;
+  selectionOrder?: number;
   // Legacy compatibility field. UI and battle stats no longer use top type differences.
   topType: TopType;
 }

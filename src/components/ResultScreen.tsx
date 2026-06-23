@@ -14,11 +14,20 @@ function formatSeconds(value: number): string {
   return `${value.toFixed(1)}초`;
 }
 
+function formatSelectionOrder(player?: PlayerConfig): string | null {
+  return player?.selectionOrder ? `${player.selectionOrder}번` : null;
+}
+
 export function ResultScreen({ result, players, localPlayerId, onRetry, onBackToLobby }: ResultScreenProps) {
   const sortedSummaries = [...result.summaries].sort((a, b) => a.survivalTime - b.survivalTime);
   const loserSummary = sortedSummaries.find((summary) => summary.playerId === result.loserId);
+  const loserPlayer = players.find((player) => player.id === result.loserId);
+  const loserSelectionOrder = formatSelectionOrder(loserPlayer);
+  const loserDisplayName = loserSelectionOrder
+    ? `${loserSelectionOrder} ${result.loserNickname}`
+    : result.loserNickname;
   const loserSkinId =
-    loserSummary?.bladeSkinId ?? players.find((player) => player.id === result.loserId)?.bladeSkinId ?? "";
+    loserSummary?.bladeSkinId ?? loserPlayer?.bladeSkinId ?? "";
   const loserSkin = getBladeSkin(loserSkinId);
 
   return (
@@ -26,7 +35,7 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
       <section className="result-hero result-loser-hero">
         <div className="result-loser-copy">
           <p className="eyebrow">Result</p>
-          <h1>오늘의 음료수 담당: {result.loserNickname}</h1>
+          <h1>오늘의 음료수 담당: {loserDisplayName}</h1>
           <p className="result-skin-line">사용 팽이: {loserSkin.name}</p>
           <p>
             {result.reason === "stopped"
@@ -59,11 +68,13 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
               const bladeSkin = getBladeSkin(player?.bladeSkinId ?? summary.bladeSkinId);
               const isLoser = summary.playerId === result.loserId;
               const isLocalPlayer = summary.playerId === localPlayerId;
+              const selectionOrder = formatSelectionOrder(player);
 
               return (
                 <tr key={summary.playerId} className={isLoser ? "loser-row" : undefined}>
                   <td>
                     <span className="result-player-cell">
+                      {selectionOrder && <span className="result-order-chip">{selectionOrder}</span>}
                       <BladeSkinPreview
                         skinId={player?.bladeSkinId ?? summary.bladeSkinId}
                         size="small"
@@ -98,6 +109,7 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
           const bladeSkin = getBladeSkin(player?.bladeSkinId ?? summary.bladeSkinId);
           const isLoser = summary.playerId === result.loserId;
           const isLocalPlayer = summary.playerId === localPlayerId;
+          const selectionOrder = formatSelectionOrder(player);
 
           return (
             <article
@@ -111,10 +123,11 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
                 highlighted={isLoser || isLocalPlayer}
                 label={isLoser ? "꼴등" : isLocalPlayer ? "나" : undefined}
               />
+              <span className={`result-compact-order ${selectionOrder ? "has-order" : ""}`}>{selectionOrder ?? "-"}</span>
               <strong>{summary.nickname}</strong>
-              <span>{bladeSkin.name}</span>
-              <span>{formatSeconds(summary.survivalTime)}</span>
-              <span>에너지 {summary.remainingEnergy.toFixed(1)}</span>
+              <span className="result-compact-skin">{bladeSkin.name}</span>
+              <span className="result-compact-time">{formatSeconds(summary.survivalTime)}</span>
+              <span className="result-compact-energy">에너지 {summary.remainingEnergy.toFixed(1)}</span>
               <span className="result-badge-row">
                 {isLoser && <b>꼴등</b>}
                 {isLocalPlayer && <b>내 결과</b>}
