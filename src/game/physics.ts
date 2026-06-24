@@ -191,6 +191,8 @@ export function resolveTopCollision(
     elapsedMs: number;
     aliveCount: number;
     repeatedCollisionPenalty: number;
+    spinDirectionA?: number;
+    spinDirectionB?: number;
     config?: BattleConfig;
   },
 ): CollisionImpact | null {
@@ -229,6 +231,15 @@ export function resolveTopCollision(
   const speedB = getMagnitude(b.vx, b.vy);
   const averageAttack = (a.attack + b.attack) * 0.5;
   const attackImpulseBonus = 0.94 + averageAttack * 0.11;
+  const spinDirectionA = options.spinDirectionA ?? 1;
+  const spinDirectionB = options.spinDirectionB ?? -1;
+  const isOpposedSpin = spinDirectionA * spinDirectionB < 0;
+  const spinImpulseMultiplier = isOpposedSpin
+    ? config.opposedSpinImpulseMultiplier
+    : config.sameSpinImpulseMultiplier;
+  const spinDamageMultiplier = isOpposedSpin
+    ? config.opposedSpinDamageMultiplier
+    : config.sameSpinDamageMultiplier;
   const baseImpulse =
     velocityAlongNormal < 0
       ? (-(1 + config.collisionRestitution) * velocityAlongNormal) / inverseWeightTotal
@@ -238,6 +249,7 @@ export function resolveTopCollision(
     Math.max(22, baseImpulse) *
     config.collisionImpulseMultiplier *
     attackImpulseBonus *
+    spinImpulseMultiplier *
     repeatedImpulsePenalty;
   const impulse = Math.min(config.maxImpulsePerCollision, unclampedImpulse);
 
@@ -246,11 +258,14 @@ export function resolveTopCollision(
   b.vx += nx * impulse * inverseWeightB;
   b.vy += ny * impulse * inverseWeightB;
 
-  const tangentialNudge = Math.min(11, overlap * 0.72);
-  a.vx += -ny * tangentialNudge * inverseWeightA;
-  a.vy += nx * tangentialNudge * inverseWeightA;
-  b.vx += ny * tangentialNudge * inverseWeightB;
-  b.vy += -nx * tangentialNudge * inverseWeightB;
+  // Spin direction changes the side-scrape after contact. It adds readable variation without breaking the simple 2D physics.
+  const spinShear = (spinDirectionA - spinDirectionB) * 0.5;
+  const tangentSign = spinShear === 0 ? 1 : Math.sign(spinShear);
+  const tangentialNudge = Math.min(13.5, (overlap * 0.78 + Math.abs(spinShear) * 3.6) * config.spinTangentialNudgeMultiplier);
+  a.vx += -ny * tangentialNudge * inverseWeightA * tangentSign;
+  a.vy += nx * tangentialNudge * inverseWeightA * tangentSign;
+  b.vx += ny * tangentialNudge * inverseWeightB * tangentSign;
+  b.vy += -nx * tangentialNudge * inverseWeightB * tangentSign;
   a.vx *= config.postCollisionVelocityDamping;
   a.vy *= config.postCollisionVelocityDamping;
   b.vx *= config.postCollisionVelocityDamping;
@@ -258,14 +273,15 @@ export function resolveTopCollision(
   clampVelocity(a, getMaxTopSpeed(a, options.elapsedMs, config));
   clampVelocity(b, getMaxTopSpeed(b, options.elapsedMs, config));
 
-  const impactForce = Math.max(28, Math.abs(velocityAlongNormal) + (speedA + speedB) * 0.16 + overlap * 2.4);
+  const impactForce =
+    Math.max(28, Math.abs(velocityAlongNormal) + (speedA + speedB) * 0.18 + overlap * 2.7) * spinImpulseMultiplier;
 
   // 충돌 데미지는 공격력, 방어 안정성, 시간대, 살아 있는 팽이 수, 반복 충돌 패널티를 모두 반영한다.
   if (options.applyDamage) {
     const damageToA = calculateCollisionDamage({
       attacker: b,
       defender: a,
-      impactForce,
+      impactForce: impactForce * spinDamageMultiplier,
       elapsedMs: options.elapsedMs,
       aliveCount: options.aliveCount,
       repeatedCollisionPenalty: options.repeatedCollisionPenalty,
@@ -274,7 +290,7 @@ export function resolveTopCollision(
     const damageToB = calculateCollisionDamage({
       attacker: a,
       defender: b,
-      impactForce,
+      impactForce: impactForce * spinDamageMultiplier,
       elapsedMs: options.elapsedMs,
       aliveCount: options.aliveCount,
       repeatedCollisionPenalty: options.repeatedCollisionPenalty,
@@ -305,7 +321,7 @@ export function applyPassiveDrain(
     return;
   }
 
-  // 시간 경과 에너지 감소량이다. 10초 전에는 floor 아래로 내려가지 않는다.
+  // 시간 경과 에너지 감소량이다. 초반 보호 시간 전에는 floor 아래로 내려가지 않는다.
   const drainPerSecond = 2.45 * drainMultiplier * BATTLE_CONFIG.passiveDrainMultiplier;
   top.energy = clamp(top.energy - drainPerSecond * deltaSeconds, 0, top.maxEnergy);
   clampPreEliminationEnergy(top, elapsedMs);

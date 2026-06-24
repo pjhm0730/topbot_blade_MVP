@@ -50,6 +50,17 @@ interface NoiseBurstOptions {
   onEnded?: () => void;
 }
 
+interface ImpactSoundVariation {
+  noise: number;
+  q: number;
+  tone: number;
+  end: number;
+  type: OscillatorType;
+  volume: number;
+  duration: number;
+  harmonic?: number;
+}
+
 const DEFAULT_SETTINGS: Omit<AudioSettings, "bgmMode"> = {
   muted: false,
   sfxVolume: 0.72,
@@ -58,7 +69,7 @@ const DEFAULT_SETTINGS: Omit<AudioSettings, "bgmMode"> = {
 };
 
 const LOBBY_BGM_INTERVAL_MS = 320;
-const BATTLE_BGM_INTERVAL_MS = 145;
+const BATTLE_BGM_INTERVAL_MS = 136;
 
 class AudioManager {
   private context: AudioContext | null = null;
@@ -288,40 +299,83 @@ class AudioManager {
     }
 
     const nowMs = performance.now();
-    if (nowMs - this.lastImpactAt < 55 || this.activeImpactCount >= 4) {
+    if (nowMs - this.lastImpactAt < 45 || this.activeImpactCount >= 5) {
       return;
     }
     this.lastImpactAt = nowMs;
     this.activeImpactCount += 1;
 
-    const normalized = clamp(intensity / 170, 0.22, 1);
+    const normalized = clamp(intensity / 190, 0.18, 1);
     const now = context.currentTime;
-    const duration = 0.1 + normalized * 0.16;
-    const volume = (0.12 + normalized * 0.3) * this.settings.sfxVolume;
+    const weakImpact: ImpactSoundVariation[] = [
+      { noise: 760, q: 1.2, tone: 230, end: 118, type: "triangle" as OscillatorType, volume: 0.78, duration: 0.88 },
+      { noise: 1180, q: 1.8, tone: 310, end: 142, type: "square" as OscillatorType, volume: 0.68, duration: 0.74 },
+    ];
+    const mediumImpact: ImpactSoundVariation[] = [
+      { noise: 920, q: 1.6, tone: 180, end: 72, type: "square" as OscillatorType, volume: 0.92, duration: 1 },
+      { noise: 1500, q: 2.1, tone: 260, end: 96, type: "sawtooth" as OscillatorType, volume: 0.82, duration: 0.9 },
+    ];
+    const strongImpact: ImpactSoundVariation[] = [
+      { noise: 1280, q: 2.2, tone: 145, end: 54, type: "square" as OscillatorType, volume: 1.12, duration: 1.08, harmonic: 392 },
+      { noise: 2100, q: 2.8, tone: 210, end: 76, type: "sawtooth" as OscillatorType, volume: 0.98, duration: 0.96, harmonic: 466.16 },
+    ];
+    const pool = normalized > 0.72 ? strongImpact : normalized > 0.42 ? mediumImpact : weakImpact;
+    const variation = pool[Math.floor(Math.random() * pool.length)];
+    const duration = (0.075 + normalized * 0.15) * variation.duration;
+    const volume = (0.1 + normalized * 0.32) * variation.volume * this.settings.sfxVolume;
 
     this.playNoiseBurst({
       startTime: now,
       duration,
       volume,
       filterType: "bandpass",
-      filterFrequency: 360 + normalized * 360,
-      q: 1.6,
+      filterFrequency: variation.noise,
+      q: variation.q,
       onEnded: () => {
         this.activeImpactCount = Math.max(0, this.activeImpactCount - 1);
       },
     });
 
-    const clang = context.createOscillator();
-    const clangGain = context.createGain();
-    clang.type = "square";
-    clang.frequency.setValueAtTime(190 - normalized * 70, now);
-    clang.frequency.exponentialRampToValueAtTime(84, now + duration);
-    clangGain.gain.setValueAtTime(volume * 0.55, now);
-    clangGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-    clang.connect(clangGain);
-    clangGain.connect(context.destination);
-    clang.start(now);
-    clang.stop(now + duration + 0.02);
+    this.scheduleOscillator({
+      destination: context.destination,
+      startTime: now,
+      duration: duration * 0.9,
+      frequency: variation.tone,
+      endFrequency: variation.end,
+      type: variation.type,
+      volume: volume * 0.62,
+      attack: 0.004,
+      filterFrequency: 900 + normalized * 900,
+      filterType: "bandpass",
+      q: 1.4 + normalized,
+    });
+
+    if (variation.harmonic) {
+      this.scheduleOscillator({
+        destination: context.destination,
+        startTime: now + 0.012,
+        duration: duration * 0.58,
+        frequency: variation.harmonic,
+        endFrequency: variation.harmonic * 0.72,
+        type: "triangle",
+        volume: volume * 0.18,
+        attack: 0.003,
+        filterFrequency: 2400,
+        filterType: "bandpass",
+        q: 2.6,
+      });
+    }
+
+    if (normalized > 0.34 && Math.random() > 0.45) {
+      this.playNoiseBurst({
+        startTime: now + 0.018,
+        duration: 0.045 + normalized * 0.05,
+        volume: volume * 0.28,
+        filterType: "highpass",
+        filterFrequency: 2600 + normalized * 1500,
+        q: 0.72,
+      });
+    }
   }
 
   playWallHit(intensity: number): void {
@@ -527,6 +581,12 @@ class AudioManager {
     const step = loop.step;
     const bassSequence = [55, 55, 82.41, 61.74, 98, 82.41, 73.42, 61.74];
     const arpSequence = [220, 277.18, 329.63, 392, 466.16, 392, 329.63, 277.18];
+    const chordSequence = [
+      [220, 277.18, 329.63],
+      [196, 246.94, 329.63],
+      [246.94, 311.13, 392],
+      [185, 233.08, 293.66],
+    ];
     const accent = step % 4 === 0 ? 1 : 0.72;
 
     this.scheduleOscillator({
@@ -544,6 +604,26 @@ class AudioManager {
       q: 0.85,
     });
 
+    if (step % 8 === 0) {
+      const chord = chordSequence[Math.floor(step / 8) % chordSequence.length];
+      chord.forEach((frequency, noteIndex) => {
+        this.scheduleOscillator({
+          destination: loop.gain,
+          nodes: loop.nodes,
+          startTime: now + noteIndex * 0.006,
+          duration: 0.42,
+          frequency,
+          endFrequency: frequency * 1.01,
+          type: "triangle",
+          volume: 0.038 * baseVolume,
+          attack: 0.035,
+          filterFrequency: 1300,
+          filterType: "lowpass",
+          q: 0.65,
+        });
+      });
+    }
+
     if (step % 2 === 1) {
       this.scheduleOscillator({
         destination: loop.gain,
@@ -558,6 +638,23 @@ class AudioManager {
         filterFrequency: 1800,
         filterType: "bandpass",
         q: 1.4,
+      });
+    }
+
+    if (step % 4 === 2) {
+      this.scheduleOscillator({
+        destination: loop.gain,
+        nodes: loop.nodes,
+        startTime: now,
+        duration: 0.12,
+        frequency: 110,
+        endFrequency: 82.41,
+        type: "triangle",
+        volume: 0.095 * baseVolume,
+        attack: 0.01,
+        filterFrequency: 520,
+        filterType: "lowpass",
+        q: 0.9,
       });
     }
 
@@ -582,10 +679,23 @@ class AudioManager {
       this.playNoiseBurst({
         startTime: now,
         duration: step % 4 === 0 ? 0.036 : 0.024,
-        volume: (step % 4 === 0 ? 0.09 : 0.055) * baseVolume,
+        volume: (step % 4 === 0 ? 0.11 : 0.066) * baseVolume,
         filterType: "highpass",
         filterFrequency: 3600,
         q: 0.7,
+        destination: loop.gain,
+        nodes: loop.nodes,
+      });
+    }
+
+    if (step % 4 === 3) {
+      this.playNoiseBurst({
+        startTime: now,
+        duration: 0.018,
+        volume: 0.034 * baseVolume,
+        filterType: "bandpass",
+        filterFrequency: 1800,
+        q: 1.1,
         destination: loop.gain,
         nodes: loop.nodes,
       });

@@ -717,18 +717,27 @@ button {
 
 .game-shell {
   display: grid;
-  width: 100%;
+  width: min(100%, 1380px);
+  height: min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 72px), 720px);
   min-height: 0;
-  place-items: center;
+  grid-template-columns: minmax(0, 1fr) clamp(196px, 18vw, 232px);
+  align-items: stretch;
+  gap: 10px;
   border: 0;
   background: transparent;
   box-shadow: none;
   padding: 0;
 }
 
+.battle-arena-wrap {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .game-container {
-  width: min(100%, 1280px);
-  height: min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 72px), 720px);
+  width: 100%;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -740,6 +749,216 @@ button {
   box-shadow: 0 0 30px rgba(125, 249, 255, 0.2);
 }
 
+.battle-status-board {
+  display: grid;
+  min-width: 0;
+  max-height: 100%;
+  gap: 6px;
+  overflow: auto;
+  border: 1px solid rgba(125, 249, 255, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.86), rgba(7, 17, 31, 0.7)),
+    radial-gradient(circle at 20% 0%, rgba(125, 249, 255, 0.16), transparent 55%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 12px 34px rgba(0, 0, 0, 0.28),
+    0 0 26px rgba(125, 249, 255, 0.12);
+  color: #f8fafc;
+  padding: 8px;
+  pointer-events: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 249, 255, 0.46) rgba(2, 6, 23, 0.4);
+}
+
+.battle-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.battle-status-heading span {
+  color: #eb5757;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.battle-status-heading strong {
+  color: #dff6ff;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.battle-status-list {
+  display: grid;
+  gap: 5px;
+}
+
+.battle-status-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 32px 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(142, 202, 230, 0.24);
+  border-radius: 7px;
+  background: rgba(7, 17, 31, 0.74);
+  padding: 5px 6px;
+  box-shadow: inset 0 0 14px rgba(125, 249, 255, 0.04);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+.battle-status-card.is-local {
+  border-color: rgba(255, 209, 102, 0.8);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), rgba(7, 17, 31, 0.78));
+}
+
+.battle-status-card.is-leader {
+  border-color: rgba(45, 212, 191, 0.76);
+  box-shadow:
+    inset 0 0 14px rgba(45, 212, 191, 0.09),
+    0 0 14px rgba(45, 212, 191, 0.12);
+}
+
+.battle-status-card.is-final-buyer {
+  border-color: rgba(255, 209, 102, 0.95);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.22), rgba(7, 17, 31, 0.82));
+}
+
+.battle-status-card.is-stopped {
+  opacity: 0.64;
+}
+
+.battle-status-rank {
+  color: #ffd166;
+  font-size: 0.75rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.battle-status-preview {
+  display: block;
+}
+
+.battle-status-preview .blade-disc {
+  width: 26px;
+  height: 26px;
+  border-width: 2px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.12),
+    0 0 12px rgba(125, 249, 255, 0.14);
+}
+
+.battle-status-preview .blade-icon {
+  font-size: 0.76rem;
+}
+
+.battle-status-preview .blade-preview-badge {
+  right: -5px;
+  bottom: -2px;
+  font-size: 0.48rem;
+  padding: 2px 4px;
+}
+
+.battle-status-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.battle-status-name-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.battle-status-name-line strong {
+  flex: 0 0 auto;
+  color: #7df9ff;
+  font-size: 0.7rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.battle-status-name-line span {
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 0.69rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-status-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  color: #9fb8cc;
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.battle-status-meta b {
+  color: #ffd166;
+  font-size: 0.55rem;
+}
+
+.battle-status-card.is-leader .battle-status-meta b,
+.battle-status-card.is-final-buyer .battle-status-meta b {
+  color: #7df9ff;
+}
+
+.battle-status-card.is-stopped .battle-status-meta b {
+  color: #9fb8cc;
+}
+
+.battle-status-hp {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(223, 246, 255, 0.36);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.94);
+  box-shadow:
+    inset 0 0 5px rgba(0, 0, 0, 0.8),
+    0 0 7px rgba(125, 249, 255, 0.12);
+}
+
+.battle-status-hp-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 2px;
+  border-radius: inherit;
+  transition:
+    width 140ms linear,
+    background-color 160ms ease;
+}
+
+.battle-status-hp-fill.is-high {
+  background: linear-gradient(90deg, #14f195, #2dd4bf);
+  box-shadow: 0 0 8px rgba(45, 212, 191, 0.48);
+}
+
+.battle-status-hp-fill.is-mid {
+  background: linear-gradient(90deg, #ffd166, #f59e0b);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.48);
+}
+
+.battle-status-hp-fill.is-low {
+  background: linear-gradient(90deg, #ff5a3d, #ef4444);
+  box-shadow: 0 0 9px rgba(239, 68, 68, 0.56);
+}
+
 .result-hero {
   display: flex;
   align-items: center;
@@ -749,16 +968,18 @@ button {
   padding: 28px;
 }
 
-.result-loser-hero {
+.result-loser-hero,
+.result-buyer-hero {
   position: relative;
   overflow: hidden;
   border-color: rgba(255, 209, 102, 0.5);
   background:
-    radial-gradient(circle at 80% 45%, rgba(255, 209, 102, 0.18), transparent 18rem),
-    linear-gradient(135deg, rgba(235, 87, 87, 0.2), rgba(10, 24, 42, 0.9));
+    radial-gradient(circle at 80% 45%, rgba(255, 209, 102, 0.2), transparent 18rem),
+    linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(10, 24, 42, 0.92));
 }
 
-.result-loser-hero::before {
+.result-loser-hero::before,
+.result-buyer-hero::before {
   position: absolute;
   inset: -45% auto auto 56%;
   width: 360px;
@@ -820,9 +1041,14 @@ button {
   font-size: 0.86rem;
 }
 
-.loser-row td {
+.loser-row td,
+.buyer-row td {
   background: rgba(235, 87, 87, 0.1);
   font-weight: 900;
+}
+
+.buyer-row td {
+  background: rgba(255, 209, 102, 0.14);
 }
 
 .result-compact-list {
@@ -1409,15 +1635,82 @@ button {
 
   .battle-screen .game-shell {
     width: 100%;
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 43px);
     min-height: 0;
+    grid-template-columns: minmax(0, 1fr) clamp(176px, 24vw, 208px);
+    gap: 6px;
     padding: 0;
+  }
+
+  .battle-arena-wrap {
+    min-width: 0;
+    min-height: 0;
   }
 
   .battle-screen .game-container {
     width: 100%;
     max-width: none;
-    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 43px);
+    height: 100%;
     min-height: 0;
+  }
+
+  .battle-status-board {
+    width: auto;
+    max-height: 100%;
+    gap: 4px;
+    border-radius: 7px;
+    padding: 4px;
+  }
+
+  .battle-status-heading span {
+    font-size: 0.52rem;
+  }
+
+  .battle-status-heading strong {
+    font-size: 0.66rem;
+  }
+
+  .battle-status-list {
+    gap: 2px;
+  }
+
+  .battle-status-card {
+    grid-template-columns: 24px 19px minmax(0, 1fr);
+    gap: 3px;
+    border-radius: 6px;
+    padding: 2px 3px;
+  }
+
+  .battle-status-rank {
+    font-size: 0.56rem;
+  }
+
+  .battle-status-preview .blade-disc {
+    width: 18px;
+    height: 18px;
+    border-width: 1px;
+  }
+
+  .battle-status-preview .blade-icon {
+    font-size: 0.5rem;
+  }
+
+  .battle-status-preview .blade-preview-badge {
+    display: none;
+  }
+
+  .battle-status-name-line strong,
+  .battle-status-name-line span {
+    font-size: 0.54rem;
+    line-height: 1;
+  }
+
+  .battle-status-meta {
+    display: none;
+  }
+
+  .battle-status-hp {
+    height: 3px;
   }
 
   .battle-hud {
@@ -1557,10 +1850,16 @@ button {
     padding: 1px 4px;
   }
 
-  .result-compact-card.loser-row {
+  .result-compact-card.loser-row,
+  .result-compact-card.buyer-row {
     border-color: rgba(235, 87, 87, 0.42);
     background: rgba(255, 236, 236, 0.94);
     font-weight: 900;
+  }
+
+  .result-compact-card.buyer-row {
+    border-color: rgba(255, 209, 102, 0.56);
+    background: rgba(255, 248, 220, 0.96);
   }
 
   .result-actions {

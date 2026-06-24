@@ -1,5 +1,13 @@
 import * as Phaser from "phaser";
-import type { BattleResult, BattleSummary, BattleTopData, LaunchData, PlayerConfig, TopType } from "../types";
+import type {
+  BattleHudState,
+  BattleResult,
+  BattleSummary,
+  BattleTopData,
+  LaunchData,
+  PlayerConfig,
+  TopType,
+} from "../types";
 import { BATTLE_CONFIG } from "./battleConfig";
 import {
   applyPassiveDrain,
@@ -20,6 +28,7 @@ interface BattleSceneOptions {
   launches: LaunchData[];
   localPlayerId?: string;
   onFinished: (result: BattleResult) => void;
+  onStateChange?: (state: BattleHudState) => void;
 }
 
 interface RuntimeTop {
@@ -61,6 +70,16 @@ interface PairCollisionHistory {
   repeatCount: number;
 }
 
+interface LeaderboardRow {
+  playerId: string;
+  container: Phaser.GameObjects.Container;
+  background: Phaser.GameObjects.Rectangle;
+  rankText: Phaser.GameObjects.Text;
+  playerText: Phaser.GameObjects.Text;
+  barBack: Phaser.GameObjects.Rectangle;
+  barFill: Phaser.GameObjects.Rectangle;
+}
+
 const FALLBACK_SCENE_WIDTH = 1280;
 const FALLBACK_SCENE_HEIGHT = 560;
 const PAIR_SOUND_COOLDOWN_MS = 170;
@@ -95,11 +114,15 @@ export class BattleScene extends Phaser.Scene {
   private readonly visualCooldowns = new Map<string, number>();
   private readonly soundCooldowns = new Map<string, number>();
   private lastImpactSoundAt = 0;
+  private lastLiveUpdateAt = 0;
   private activeSparkCount = 0;
   private lastElectricArcAt = 0;
   private lastElectricArcX = -Infinity;
   private lastElectricArcY = -Infinity;
   private electricArcGraphics: Phaser.GameObjects.Graphics[] = [];
+  private leaderboardPanel?: Phaser.GameObjects.Graphics;
+  private leaderboardTitle?: Phaser.GameObjects.Text;
+  private leaderboardRows: LeaderboardRow[] = [];
 
   constructor(options: BattleSceneOptions) {
     super("BattleScene");
@@ -118,9 +141,11 @@ export class BattleScene extends Phaser.Scene {
     }, BATTLE_CONFIG.maxBattleDurationMs + 250);
     this.drawArena();
     this.createTops();
+    this.emitStateChange(0, true);
     this.spawnLaunchBurst();
     this.spawnLocalPlayerFocusCue();
-    this.timerText = this.add.text(24, 20, "남은 시간 30.0초", {
+    const maxBattleSeconds = BATTLE_CONFIG.maxBattleDurationMs / 1000;
+    this.timerText = this.add.text(24, 20, `남은 시간 ${maxBattleSeconds.toFixed(1)}초`, {
       fontFamily: "Arial, sans-serif",
       fontSize: "20px",
       color: "#dff6ff",
@@ -152,18 +177,20 @@ export class BattleScene extends Phaser.Scene {
     this.resolveCollisions(time, elapsedMs);
     this.updateLoserCandidate(elapsedMs);
     this.syncVisuals(time, deltaSeconds);
+    this.emitStateChange(time);
 
-    const firstStopped = this.tops.find((top) => top.data.stopped);
-    if (elapsedMs >= BATTLE_CONFIG.minEliminationTimeMs && firstStopped) {
-      this.eventText?.setText(`${firstStopped.data.nickname} 팽이가 먼저 멈췄습니다.`);
-      this.finishBattle("stopped", elapsed, firstStopped.data.playerId, 950);
+    const aliveTops = this.getAliveTops();
+    if (elapsedMs >= BATTLE_CONFIG.minEliminationTimeMs && aliveTops.length <= 1) {
+      const beverageBuyerTop = aliveTops[0] ?? this.pickFallbackLastSurvivor();
+      this.eventText?.setText(`${beverageBuyerTop.data.nickname} 마지막 생존자 확정!`);
+      this.finishBattle("last-survivor", elapsed, beverageBuyerTop.data.playerId, 950);
       return;
     }
 
     if (elapsedMs >= BATTLE_CONFIG.maxBattleDurationMs) {
-      const lowestEnergyTop = [...this.tops].sort((a, b) => a.data.energy - b.data.energy)[0];
-      this.eventText?.setText("제한 시간 종료. 남은 에너지가 가장 낮은 플레이어가 꼴등입니다.");
-      this.finishBattle("time-lowest-energy", maxBattleSeconds, lowestEnergyTop.data.playerId, 850);
+      const beverageBuyerTop = this.pickTimeLimitBeverageBuyer();
+      this.eventText?.setText("제한 시간 종료. 남은 에너지가 가장 높은 플레이어가 음료수 담당입니다.");
+      this.finishBattle("time-highest-energy", maxBattleSeconds, beverageBuyerTop.data.playerId, 850);
     }
   }
 
@@ -180,12 +207,16 @@ export class BattleScene extends Phaser.Scene {
     this.loserCandidatePlayerId = null;
     this.finalLoserPlayerId = null;
     this.lastImpactSoundAt = 0;
+    this.lastLiveUpdateAt = 0;
     this.finishTimeoutId = null;
     this.maxBattleTimeoutId = null;
     this.pairCollisionHistories.clear();
     this.visualCooldowns.clear();
     this.soundCooldowns.clear();
     this.electricArcGraphics = [];
+    this.leaderboardRows = [];
+    this.leaderboardPanel = undefined;
+    this.leaderboardTitle = undefined;
     this.activeSparkCount = 0;
     this.lastElectricArcAt = 0;
     this.lastElectricArcX = -Infinity;
@@ -216,6 +247,12 @@ export class BattleScene extends Phaser.Scene {
     this.soundCooldowns.clear();
     this.electricArcGraphics.forEach((graphics) => graphics.destroy());
     this.electricArcGraphics = [];
+    this.leaderboardRows.forEach((row) => row.container.destroy(true));
+    this.leaderboardRows = [];
+    this.leaderboardPanel?.destroy();
+    this.leaderboardPanel = undefined;
+    this.leaderboardTitle?.destroy();
+    this.leaderboardTitle = undefined;
     this.activeSparkCount = 0;
     this.scale.off("resize", this.handleScaleResize, this);
     this.arenaGraphics?.destroy();
@@ -252,6 +289,7 @@ export class BattleScene extends Phaser.Scene {
     this.timerText?.setPosition(24, 18);
     this.eventText?.setPosition(24, 44);
     this.tops.forEach((runtimeTop) => this.clampTopInsideArena(runtimeTop.data));
+    this.layoutLeaderboard(true);
   }
 
   private getEllipseRatio(x: number, y: number, padding = 0): number {
@@ -518,6 +556,140 @@ export class BattleScene extends Phaser.Scene {
         localHighlightRing,
         localMarker,
       };
+    });
+  }
+
+  private createLeaderboard(): void {
+    this.leaderboardPanel?.destroy();
+    this.leaderboardTitle?.destroy();
+    this.leaderboardRows.forEach((row) => row.container.destroy(true));
+    this.leaderboardRows = [];
+
+    this.leaderboardPanel = this.add.graphics();
+    this.leaderboardPanel.setDepth(BATTLE_CONFIG.leaderboardDepth);
+    this.leaderboardTitle = this.add
+      .text(0, 0, "LIVE RANK", {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "11px",
+        color: "#dff6ff",
+        fontStyle: "900",
+        stroke: "#020617",
+        strokeThickness: 2,
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(BATTLE_CONFIG.leaderboardDepth + 2);
+
+    this.leaderboardRows = this.tops.map((runtimeTop) => {
+      const rowBackground = this.add.rectangle(0, 0, 10, 18, 0x07111f, 0.62).setOrigin(0, 0.5);
+      rowBackground.setStrokeStyle(1, 0x24405f, 0.72);
+      const rankText = this.add
+        .text(0, 0, "1위", {
+          fontFamily: "Arial, sans-serif",
+          fontSize: "11px",
+          color: "#ffd166",
+          fontStyle: "900",
+        })
+        .setOrigin(0, 0.5);
+      const playerText = this.add
+        .text(0, 0, `${runtimeTop.data.selectionOrder}번`, {
+          fontFamily: "Arial, sans-serif",
+          fontSize: "11px",
+          color: runtimeTop.isLocalPlayerTop ? "#ffd166" : "#f8fafc",
+          fontStyle: "800",
+        })
+        .setOrigin(0, 0.5);
+      const barBack = this.add.rectangle(0, 0, 54, 5, 0x020617, 0.95).setOrigin(0, 0.5);
+      barBack.setStrokeStyle(1, 0xdff6ff, 0.35);
+      const barFill = this.add.rectangle(0, 0, 54, 5, getEnergyColor(1), 1).setOrigin(0, 0.5);
+      const container = this.add.container(0, 0, [rowBackground, rankText, playerText, barBack, barFill]);
+      container.setDepth(BATTLE_CONFIG.leaderboardDepth + 1);
+
+      return {
+        playerId: runtimeTop.data.playerId,
+        container,
+        background: rowBackground,
+        rankText,
+        playerText,
+        barBack,
+        barFill,
+      };
+    });
+
+    this.layoutLeaderboard(true);
+    this.syncLeaderboard();
+  }
+
+  private getLeaderboardLayout(): { x: number; y: number; width: number; rowHeight: number; barWidth: number } {
+    const width = clamp(this.sceneWidth * 0.19, BATTLE_CONFIG.leaderboardMinWidth, BATTLE_CONFIG.leaderboardMaxWidth);
+    const rowHeight = this.sceneHeight <= 380 ? 20 : BATTLE_CONFIG.leaderboardRowHeight;
+    const x = this.sceneWidth - width - 12;
+    const y = this.sceneHeight <= 380 ? 52 : 72;
+    const barWidth = Math.max(42, width - 96);
+
+    return { x, y, width, rowHeight, barWidth };
+  }
+
+  private layoutLeaderboard(snap = false): void {
+    if (!this.leaderboardPanel || !this.leaderboardTitle) {
+      return;
+    }
+
+    const layout = this.getLeaderboardLayout();
+    const panelHeight = 24 + this.leaderboardRows.length * layout.rowHeight + 8;
+    this.leaderboardPanel.clear();
+    this.leaderboardPanel.fillStyle(0x020617, 0.58);
+    this.leaderboardPanel.fillRoundedRect(layout.x - 8, layout.y - 18, layout.width + 16, panelHeight, 9);
+    this.leaderboardPanel.lineStyle(1, 0x7df9ff, 0.32);
+    this.leaderboardPanel.strokeRoundedRect(layout.x - 8, layout.y - 18, layout.width + 16, panelHeight, 9);
+    this.leaderboardTitle.setPosition(layout.x, layout.y - 7);
+
+    this.leaderboardRows.forEach((row, index) => {
+      const targetY = layout.y + 18 + index * layout.rowHeight;
+      row.container.x = layout.x;
+      if (snap) {
+        row.container.y = targetY;
+      }
+      row.background.setSize(layout.width, layout.rowHeight - 4);
+      row.rankText.setPosition(8, 0);
+      row.playerText.setPosition(42, 0);
+      row.barBack.setPosition(layout.width - layout.barWidth - 8, 0);
+      row.barBack.setSize(layout.barWidth, 5);
+      row.barFill.setPosition(layout.width - layout.barWidth - 8, 0);
+    });
+  }
+
+  private syncLeaderboard(): void {
+    if (!this.leaderboardPanel || this.leaderboardRows.length === 0) {
+      return;
+    }
+
+    const layout = this.getLeaderboardLayout();
+    const rankedTops = [...this.tops].sort((a, b) => b.data.energy / b.data.maxEnergy - a.data.energy / a.data.maxEnergy);
+    const rankByPlayerId = new Map(rankedTops.map((runtimeTop, index) => [runtimeTop.data.playerId, index + 1]));
+    const topByPlayerId = new Map(this.tops.map((runtimeTop) => [runtimeTop.data.playerId, runtimeTop]));
+
+    this.leaderboardRows.sort((a, b) => (rankByPlayerId.get(a.playerId) ?? 99) - (rankByPlayerId.get(b.playerId) ?? 99));
+    this.layoutLeaderboard(false);
+
+    this.leaderboardRows.forEach((row, index) => {
+      const runtimeTop = topByPlayerId.get(row.playerId);
+      if (!runtimeTop) {
+        row.container.setVisible(false);
+        return;
+      }
+
+      const rank = rankByPlayerId.get(row.playerId) ?? index + 1;
+      const energyRatio = clamp(runtimeTop.data.energy / runtimeTop.data.maxEnergy, 0, 1);
+      const targetY = layout.y + 18 + index * layout.rowHeight;
+      row.container.y += (targetY - row.container.y) * 0.18;
+      row.rankText.setText(`${rank}위`);
+      row.playerText.setText(`${runtimeTop.data.selectionOrder}번`);
+      row.playerText.setColor(runtimeTop.isLocalPlayerTop ? "#ffd166" : "#f8fafc");
+      row.barFill.setSize(layout.barWidth * energyRatio, 5);
+      row.barFill.setFillStyle(getEnergyColor(energyRatio), runtimeTop.data.stopped ? 0.45 : 1);
+      row.background.setFillStyle(runtimeTop.isLocalPlayerTop ? 0x13294b : 0x07111f, runtimeTop.isLocalPlayerTop ? 0.78 : 0.62);
+      row.container.setAlpha(runtimeTop.data.stopped ? 0.55 : 1);
+      row.container.setVisible(true);
     });
   }
 
@@ -809,6 +981,8 @@ export class BattleScene extends Phaser.Scene {
           elapsedMs,
           aliveCount,
           repeatedCollisionPenalty,
+          spinDirectionA: this.tops[i].spinDirection,
+          spinDirectionB: this.tops[j].spinDirection,
           config: BATTLE_CONFIG,
         });
         if (!impact) {
@@ -861,24 +1035,52 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const lowestEnergyTop = aliveTops.reduce((lowest, current) => {
+    const highestEnergyTop = aliveTops.reduce((highest, current) => {
       const currentRatio = current.data.energy / current.data.maxEnergy;
-      const lowestRatio = lowest.data.energy / lowest.data.maxEnergy;
-      return currentRatio < lowestRatio ? current : lowest;
+      const highestRatio = highest.data.energy / highest.data.maxEnergy;
+      return currentRatio > highestRatio ? current : highest;
     });
-    const lowestEnergyRatio = lowestEnergyTop.data.energy / lowestEnergyTop.data.maxEnergy;
 
-    this.setLoserCandidate(
-      lowestEnergyRatio <= BATTLE_CONFIG.loserCandidateEnergyRatioThreshold
-        ? lowestEnergyTop.data.playerId
-        : null,
-    );
+    this.setLoserCandidate(highestEnergyTop.data.playerId);
   }
 
   private setLoserCandidate(playerId: string | null): void {
     this.loserCandidatePlayerId = playerId;
     this.tops.forEach((runtimeTop) => {
       runtimeTop.isLoserCandidateTop = runtimeTop.data.playerId === playerId;
+    });
+  }
+
+  private emitStateChange(time: number, force = false): void {
+    if (!this.options.onStateChange) {
+      return;
+    }
+
+    if (!force && time - this.lastLiveUpdateAt < 120) {
+      return;
+    }
+
+    this.lastLiveUpdateAt = time;
+    const elapsedMs = this.battleClockReady ? Math.max(0, time - this.startTime) : 0;
+    const remainingMs = Math.max(0, BATTLE_CONFIG.maxBattleDurationMs - elapsedMs);
+    const currentLeaderId = this.getCurrentLeader()?.data.playerId ?? null;
+
+    this.options.onStateChange({
+      elapsedMs,
+      remainingMs,
+      tops: this.tops.map((runtimeTop) => ({
+        playerId: runtimeTop.data.playerId,
+        nickname: runtimeTop.data.nickname,
+        bladeSkinId: runtimeTop.data.bladeSkinId,
+        skinName: runtimeTop.data.skinName,
+        selectionOrder: runtimeTop.data.selectionOrder,
+        energy: Math.max(0, runtimeTop.data.energy),
+        maxEnergy: runtimeTop.data.maxEnergy,
+        stopped: runtimeTop.data.stopped,
+        isLocalPlayerTop: runtimeTop.isLocalPlayerTop,
+        isCurrentLeader: runtimeTop.data.playerId === currentLeaderId,
+        isFinalBeverageBuyer: runtimeTop.isFinalLoserTop,
+      })),
     });
   }
 
@@ -967,7 +1169,7 @@ export class BattleScene extends Phaser.Scene {
     ring.strokeCircle(0, 0, baseRadius - 4);
 
     badge
-      .setText(isFinal ? "꼴등!" : "위험!")
+      .setText(isFinal ? "담당!" : "생존 후보")
       .setPosition(
         clamp(top.x, 44, this.sceneWidth - 44),
         clamp(
@@ -977,7 +1179,7 @@ export class BattleScene extends Phaser.Scene {
         ),
       )
       .setAlpha(top.stopped ? 0.86 : 0.9 + pulse * 0.1)
-      .setBackgroundColor(isFinal ? "rgba(190, 18, 60, 0.96)" : "rgba(235, 87, 87, 0.92)")
+      .setBackgroundColor(isFinal ? "rgba(255, 209, 102, 0.96)" : "rgba(45, 212, 191, 0.9)")
       .setVisible(true);
   }
 
@@ -1031,6 +1233,7 @@ export class BattleScene extends Phaser.Scene {
     this.syncLocalPlayerHighlight(finalLoser, now);
     this.spawnFinalLoserShockwave(finalLoser);
     this.flashTop(finalLoser, true);
+    this.emitStateChange(now, true);
   }
 
   private spawnFinalLoserShockwave(runtimeTop: RuntimeTop): void {
@@ -1043,17 +1246,17 @@ export class BattleScene extends Phaser.Scene {
     redFlash.setDepth(BATTLE_CONFIG.finalLoserHighlightDepth);
 
     const finalText = this.add
-      .text(top.x, top.y + top.radius + 54, runtimeTop.isLocalPlayerTop ? "내 팽이 · 꼴등!" : "음료수 담당!", {
+      .text(top.x, top.y + top.radius + 54, runtimeTop.isLocalPlayerTop ? "내 팽이 · 담당!" : "음료수 담당!", {
         fontFamily: "Arial, sans-serif",
         fontSize: "18px",
-        color: "#ffffff",
+        color: "#07111f",
         fontStyle: "900",
-        stroke: "#7a1010",
-        strokeThickness: 4,
+        stroke: "#ffffff",
+        strokeThickness: 3,
       })
       .setOrigin(0.5)
       .setPadding(10, 3, 10, 3)
-      .setBackgroundColor("rgba(190, 18, 60, 0.96)")
+      .setBackgroundColor("rgba(255, 209, 102, 0.96)")
       .setDepth(BATTLE_CONFIG.finalLoserHighlightDepth + 4);
     finalText.setPosition(clamp(finalText.x, 76, this.sceneWidth - 76), clamp(finalText.y, 24, this.sceneHeight - 20));
 
@@ -1087,6 +1290,10 @@ export class BattleScene extends Phaser.Scene {
 
   private stopTop(runtimeTop: RuntimeTop, elapsed: number): void {
     const top = runtimeTop.data;
+    if (top.stopped) {
+      return;
+    }
+
     top.stopped = true;
     top.stoppedAt = elapsed;
     top.vx = 0;
@@ -1094,6 +1301,7 @@ export class BattleScene extends Phaser.Scene {
     top.energy = Math.max(0, top.energy);
     runtimeTop.body.setFillStyle(0x9aa6b2, 1);
     runtimeTop.body.setStrokeStyle(3, 0x516070, 0.8);
+    this.eventText?.setText(`${top.nickname} 탈락. 마지막 생존자를 가리는 중입니다.`);
   }
 
   private flashTop(runtimeTop: RuntimeTop, isStrong: boolean): void {
@@ -1399,13 +1607,13 @@ export class BattleScene extends Phaser.Scene {
   private finishBattle(
     reason: BattleResult["reason"],
     duration: number,
-    loserId: string,
+    beverageBuyerId: string,
     delayMs: number,
   ): void {
     if (this.finished || this.cleanedUp) {
       return;
     }
-    this.markFinalLoser(loserId);
+    this.markFinalLoser(beverageBuyerId);
     this.finished = true;
     if (this.maxBattleTimeoutId !== null) {
       window.clearTimeout(this.maxBattleTimeoutId);
@@ -1419,11 +1627,13 @@ export class BattleScene extends Phaser.Scene {
       this.finishTimeoutId = null;
 
       const summaries = this.createSummaries(duration);
-      const loser = summaries.find((summary) => summary.playerId === loserId) ?? summaries[0];
+      const beverageBuyer = summaries.find((summary) => summary.playerId === beverageBuyerId) ?? summaries[0];
 
       this.options.onFinished({
-        loserId: loser.playerId,
-        loserNickname: loser.nickname,
+        loserId: beverageBuyer.playerId,
+        loserNickname: beverageBuyer.nickname,
+        beverageBuyerId: beverageBuyer.playerId,
+        beverageBuyerNickname: beverageBuyer.nickname,
         reason,
         duration,
         summaries,
@@ -1443,12 +1653,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const lowestEnergyTop = [...this.tops].sort((a, b) => a.data.energy - b.data.energy)[0];
-    this.eventText?.setText("제한 시간 종료. 남은 에너지가 가장 낮은 플레이어가 꼴등입니다.");
+    const beverageBuyerTop = this.pickTimeLimitBeverageBuyer();
+    this.eventText?.setText("제한 시간 종료. 남은 에너지가 가장 높은 플레이어가 음료수 담당입니다.");
     this.finishBattle(
-      "time-lowest-energy",
+      "time-highest-energy",
       BATTLE_CONFIG.maxBattleDurationMs / 1000,
-      lowestEnergyTop.data.playerId,
+      beverageBuyerTop.data.playerId,
       850,
     );
   }
@@ -1464,11 +1674,43 @@ export class BattleScene extends Phaser.Scene {
         survivalTime: runtimeTop.data.stoppedAt ?? duration,
         remainingEnergy: Math.max(0, runtimeTop.data.energy),
       }))
-      .sort((a, b) => a.remainingEnergy - b.remainingEnergy);
+      .sort((a, b) => b.survivalTime - a.survivalTime || b.remainingEnergy - a.remainingEnergy);
   }
 
   private getAliveCount(): number {
     return this.tops.filter((top) => !top.data.stopped).length;
+  }
+
+  private getAliveTops(): RuntimeTop[] {
+    return this.tops.filter((top) => !top.data.stopped);
+  }
+
+  private getCurrentLeader(): RuntimeTop | null {
+    const aliveTops = this.getAliveTops();
+    if (aliveTops.length === 0) {
+      return null;
+    }
+
+    return aliveTops.reduce((leader, current) => {
+      const leaderRatio = leader.data.energy / leader.data.maxEnergy;
+      const currentRatio = current.data.energy / current.data.maxEnergy;
+      return currentRatio > leaderRatio ? current : leader;
+    });
+  }
+
+  private pickTimeLimitBeverageBuyer(): RuntimeTop {
+    return this.getCurrentLeader() ?? this.pickFallbackLastSurvivor();
+  }
+
+  private pickFallbackLastSurvivor(): RuntimeTop {
+    return [...this.tops].sort((a, b) => {
+      const stoppedAtDiff = (b.data.stoppedAt ?? -Infinity) - (a.data.stoppedAt ?? -Infinity);
+      if (stoppedAtDiff !== 0) {
+        return stoppedAtDiff;
+      }
+
+      return b.data.energy - a.data.energy;
+    })[0];
   }
 
   private isTargetValid(playerId: string | null): boolean {

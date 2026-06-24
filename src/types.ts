@@ -51,6 +51,26 @@ export interface BattleTopData {
   stoppedAt: number | null;
 }
 
+export interface BattleHudTopState {
+  playerId: string;
+  nickname: string;
+  bladeSkinId: string;
+  skinName: string;
+  selectionOrder: number;
+  energy: number;
+  maxEnergy: number;
+  stopped: boolean;
+  isLocalPlayerTop: boolean;
+  isCurrentLeader: boolean;
+  isFinalBeverageBuyer: boolean;
+}
+
+export interface BattleHudState {
+  elapsedMs: number;
+  remainingMs: number;
+  tops: BattleHudTopState[];
+}
+
 export interface BattleSummary {
   playerId: string;
   nickname: string;
@@ -62,9 +82,12 @@ export interface BattleSummary {
 }
 
 export interface BattleResult {
+  // Legacy compatibility: these fields point to the beverage buyer in the current rule set.
   loserId: string;
   loserNickname: string;
-  reason: "stopped" | "time-lowest-energy";
+  beverageBuyerId?: string;
+  beverageBuyerNickname?: string;
+  reason: "last-survivor" | "time-highest-energy" | "stopped" | "time-lowest-energy";
   duration: number;
   summaries: BattleSummary[];
 }
