@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import * as Phaser from "phaser";
 import type { BattleHudState, BattleHudTopState, BattleResult, LaunchData, PlayerConfig } from "../types";
 import { BattleScene } from "../game/BattleScene";
 import { BATTLE_CONFIG } from "../game/battleConfig";
 import { BladeSkinPreview } from "./BladeSkinPreview";
+import { createPlayerIdentityAssignments } from "../game/playerIdentityColors";
 
 interface BattleScreenProps {
   players: PlayerConfig[];
@@ -41,6 +43,9 @@ export function BattleScreen({ players, launches, localPlayerId, onFinished }: B
 
   const leaderboardRows = useMemo(() => {
     const liveByPlayerId = new Map((hudState?.tops ?? []).map((status) => [status.playerId, status]));
+    const identityByPlayerId = new Map(
+      createPlayerIdentityAssignments(players).map((assignment) => [assignment.playerId, assignment]),
+    );
 
     return players
       .map<BattleHudTopState>((player, index) => {
@@ -49,12 +54,15 @@ export function BattleScreen({ players, launches, localPlayerId, onFinished }: B
           return liveStatus;
         }
 
+        const identityAssignment = identityByPlayerId.get(player.id);
+
         return {
           playerId: player.id,
           nickname: player.nickname,
           bladeSkinId: player.bladeSkinId,
           skinName: "",
-          selectionOrder: player.selectionOrder ?? index + 1,
+          identityColor: identityAssignment?.identityColor ?? "#f8fafc",
+          selectionOrder: identityAssignment?.selectionOrder ?? index + 1,
           energy: 1,
           maxEnergy: 1,
           stopped: false,
@@ -214,6 +222,11 @@ export function BattleScreen({ players, launches, localPlayerId, onFinished }: B
                     .join(" ")}
                 >
                   <span className="battle-status-rank">{index + 1}위</span>
+                  <span
+                    className="battle-status-identity"
+                    style={{ "--identity-color": status.identityColor } as CSSProperties}
+                    aria-label={`${status.selectionOrder}번 식별 색상`}
+                  />
                   <BladeSkinPreview
                     skinId={status.bladeSkinId}
                     size="small"

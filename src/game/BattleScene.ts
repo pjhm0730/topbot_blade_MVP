@@ -22,6 +22,7 @@ import {
 import { getBattleStats } from "./topTypes";
 import { audioManager } from "../audio/audioManager";
 import { getBladeSkin, type BladeSkin } from "./bladeSkins";
+import { createPlayerIdentityAssignments, getIdentityTextColor } from "./playerIdentityColors";
 
 interface BattleSceneOptions {
   players: PlayerConfig[];
@@ -36,6 +37,8 @@ interface RuntimeTop {
   drainMultiplier: number;
   skin: BladeSkin;
   color: number;
+  identityColor: number;
+  identityColorHex: string;
   isLocalPlayerTop: boolean;
   isLoserCandidateTop: boolean;
   isFinalLoserTop: boolean;
@@ -54,6 +57,8 @@ interface RuntimeTop {
   container: Phaser.GameObjects.Container;
   body: Phaser.GameObjects.Arc;
   marker: Phaser.GameObjects.Rectangle;
+  identityRing: Phaser.GameObjects.Graphics;
+  orderBadgeBackground: Phaser.GameObjects.Graphics;
   orderBadge: Phaser.GameObjects.Text;
   label: Phaser.GameObjects.Text;
   energyRing: Phaser.GameObjects.Graphics;
@@ -63,6 +68,7 @@ interface RuntimeTop {
   loserBadge: Phaser.GameObjects.Text;
   localHighlightRing?: Phaser.GameObjects.Graphics;
   localMarker?: Phaser.GameObjects.Triangle;
+  lastTrailAt: number;
 }
 
 interface PairCollisionHistory {
@@ -85,6 +91,8 @@ const FALLBACK_SCENE_HEIGHT = 560;
 const PAIR_SOUND_COOLDOWN_MS = 170;
 const WALL_SOUND_COOLDOWN_MS = 190;
 const GLOBAL_IMPACT_SOUND_COOLDOWN_MS = 62;
+const IDENTITY_TRAIL_INTERVAL_MS = 95;
+const IDENTITY_TRAIL_DURATION_MS = 280;
 
 export class BattleScene extends Phaser.Scene {
   private readonly options: BattleSceneOptions;
@@ -364,12 +372,22 @@ export class BattleScene extends Phaser.Scene {
 
   private createTops(): void {
     const total = this.options.players.length;
+    const identityAssignments = createPlayerIdentityAssignments(this.options.players);
+    const identityAssignmentByPlayerId = new Map(
+      identityAssignments.map((assignment) => [assignment.playerId, assignment]),
+    );
 
     this.tops = this.options.players.map((player, index) => {
       const launchPower = this.options.launches.find((launch) => launch.playerId === player.id)?.launchPower ?? 0.85;
       const stats = getBattleStats(player.topType);
       const skin = getBladeSkin(player.bladeSkinId);
       const isLocalPlayerTop = player.id === (this.options.localPlayerId ?? this.options.players[0]?.id);
+      const identityAssignment = identityAssignmentByPlayerId.get(player.id);
+      const selectionOrder = identityAssignment?.selectionOrder ?? index + 1;
+      const identityColorHex = identityAssignment?.identityColor ?? "#f8fafc";
+      const identityColor = hexToNumber(identityColorHex);
+      const identityTextColor = getIdentityTextColor(identityColorHex);
+      const identityStrokeColor = identityTextColor === "#020617" ? "#ffffff" : "#020617";
       const primaryColor = hexToNumber(skin.primaryColor);
       const secondaryColor = hexToNumber(skin.secondaryColor);
       const accentColor = hexToNumber(skin.accentColor);
@@ -388,8 +406,9 @@ export class BattleScene extends Phaser.Scene {
         nickname: player.nickname,
         bladeSkinId: skin.id,
         skinName: skin.name,
+        identityColor: identityColorHex,
         topType: player.topType,
-        selectionOrder: player.selectionOrder ?? index + 1,
+        selectionOrder,
         x,
         y,
         vx: Math.cos(launchAngle) * speed,
@@ -408,7 +427,7 @@ export class BattleScene extends Phaser.Scene {
 
       const shadow = this.add.circle(4, 6, data.radius + 3, 0x000000, 0.14);
       const body = this.add.circle(0, 0, data.radius, primaryColor, 1);
-      body.setStrokeStyle(3, 0xffffff, 0.95);
+      body.setStrokeStyle(5, identityColor, 1);
       const skinObjects = this.createBladeSkinObjects(skin, data.radius, primaryColor, secondaryColor, accentColor);
       const bladeA = this.add.triangle(
         0,
@@ -459,18 +478,20 @@ export class BattleScene extends Phaser.Scene {
         icon,
       ]);
       container.setDepth(isLocalPlayerTop ? BATTLE_CONFIG.localPlayerHighlightDepth + 1 : 8);
+      const identityRing = this.add.graphics();
+      identityRing.setDepth(isLocalPlayerTop ? BATTLE_CONFIG.localPlayerHighlightDepth - 3 : 34);
+      const orderBadgeBackground = this.add.graphics();
+      orderBadgeBackground.setDepth(BATTLE_CONFIG.finalLoserHighlightDepth + (isLocalPlayerTop ? 15 : 11));
       const orderBadge = this.add
-        .text(data.x, data.y - data.radius - 38, getBattleOrderText(data.selectionOrder, isLocalPlayerTop), {
+        .text(data.x, data.y - data.radius - 34, `${data.selectionOrder}`, {
           fontFamily: "Arial, sans-serif",
-          fontSize: isLocalPlayerTop ? "12px" : "11px",
-          color: isLocalPlayerTop ? "#07111f" : "#f8fafc",
+          fontSize: isLocalPlayerTop ? "20px" : "18px",
+          color: identityTextColor,
           fontStyle: "900",
-          stroke: isLocalPlayerTop ? "#ffffff" : "#020617",
-          strokeThickness: isLocalPlayerTop ? 1 : 2,
+          stroke: identityStrokeColor,
+          strokeThickness: 4,
         })
-        .setOrigin(0.5)
-        .setPadding(isLocalPlayerTop ? 7 : 6, 2, isLocalPlayerTop ? 7 : 6, 2)
-        .setBackgroundColor(isLocalPlayerTop ? "rgba(255, 209, 102, 0.96)" : "rgba(7, 17, 31, 0.86)");
+        .setOrigin(0.5);
       orderBadge.setDepth(BATTLE_CONFIG.finalLoserHighlightDepth + (isLocalPlayerTop ? 16 : 12));
       const label = this.add
         .text(data.x, data.y + data.radius + 14, player.nickname, {
@@ -528,6 +549,8 @@ export class BattleScene extends Phaser.Scene {
         drainMultiplier: stats.drainMultiplier,
         skin,
         color: primaryColor,
+        identityColor,
+        identityColorHex,
         isLocalPlayerTop,
         isLoserCandidateTop: false,
         isFinalLoserTop: false,
@@ -546,6 +569,8 @@ export class BattleScene extends Phaser.Scene {
         container,
         body,
         marker,
+        identityRing,
+        orderBadgeBackground,
         orderBadge,
         label,
         energyRing,
@@ -555,6 +580,7 @@ export class BattleScene extends Phaser.Scene {
         loserBadge,
         localHighlightRing,
         localMarker,
+        lastTrailAt: -Infinity,
       };
     });
   }
@@ -1073,6 +1099,7 @@ export class BattleScene extends Phaser.Scene {
         nickname: runtimeTop.data.nickname,
         bladeSkinId: runtimeTop.data.bladeSkinId,
         skinName: runtimeTop.data.skinName,
+        identityColor: runtimeTop.data.identityColor,
         selectionOrder: runtimeTop.data.selectionOrder,
         energy: Math.max(0, runtimeTop.data.energy),
         maxEnergy: runtimeTop.data.maxEnergy,
@@ -1103,13 +1130,15 @@ export class BattleScene extends Phaser.Scene {
       runtimeTop.container.rotation += runtimeTop.spinDirection * visualSpin;
       runtimeTop.container.setAlpha(top.stopped ? 0.42 : 1);
       runtimeTop.marker.setAlpha(top.stopped ? 0.25 : 0.9);
-      const orderBadgeX = clamp(top.x, runtimeTop.isLocalPlayerTop ? 58 : 36, this.sceneWidth - (runtimeTop.isLocalPlayerTop ? 58 : 36));
-      const orderBadgeY = clamp(top.y - top.radius - 38, 14, this.sceneHeight - 18);
+      this.spawnIdentityTrail(runtimeTop, time);
+      this.drawIdentityRing(runtimeTop);
+      const orderBadgePosition = this.getOrderBadgePosition(runtimeTop);
       const labelX = clamp(top.x, 50, this.sceneWidth - 50);
       const labelY = clamp(top.y + top.radius + 15, 18, this.sceneHeight - 24);
       const energyBarX = clamp(top.x, 30, this.sceneWidth - 30);
       const energyBarY = clamp(top.y + top.radius + 33, 28, this.sceneHeight - 8);
-      runtimeTop.orderBadge.setPosition(orderBadgeX, orderBadgeY);
+      this.drawOrderBadge(runtimeTop, orderBadgePosition.x, orderBadgePosition.y);
+      runtimeTop.orderBadge.setPosition(orderBadgePosition.x, orderBadgePosition.y);
       runtimeTop.orderBadge.setAlpha(top.stopped ? 0.62 : 0.94);
       runtimeTop.label.setPosition(labelX, labelY);
       runtimeTop.label.setAlpha(top.stopped ? 0.55 : 1);
@@ -1123,6 +1152,94 @@ export class BattleScene extends Phaser.Scene {
       this.drawEnergyRing(runtimeTop, energyRatio);
       this.syncLoserHighlight(runtimeTop, time);
       this.syncLocalPlayerHighlight(runtimeTop, time);
+    });
+  }
+
+  private drawIdentityRing(runtimeTop: RuntimeTop): void {
+    const top = runtimeTop.data;
+    const ring = runtimeTop.identityRing;
+    const alpha = top.stopped ? 0.42 : 0.96;
+    const ringRadius = top.radius + 16;
+
+    ring.clear();
+    ring.setPosition(top.x, top.y);
+    ring.fillStyle(runtimeTop.identityColor, top.stopped ? 0.04 : 0.11);
+    ring.fillCircle(0, 0, ringRadius + 11);
+    ring.lineStyle(18, 0x020617, alpha * 0.95);
+    ring.strokeCircle(0, 0, ringRadius);
+    ring.lineStyle(14, 0xffffff, alpha * 0.9);
+    ring.strokeCircle(0, 0, ringRadius);
+    ring.lineStyle(10, runtimeTop.identityColor, alpha);
+    ring.strokeCircle(0, 0, ringRadius);
+    ring.lineStyle(3, 0x020617, alpha * 0.9);
+    ring.strokeCircle(0, 0, top.radius + 8);
+  }
+
+  private getOrderBadgePosition(runtimeTop: RuntimeTop): { x: number; y: number } {
+    const top = runtimeTop.data;
+    const badgeRadius = getOrderBadgeRadius(this.sceneHeight, runtimeTop.isLocalPlayerTop);
+    const offset = getOrderBadgeOffset(top.selectionOrder, top.radius, badgeRadius);
+
+    return {
+      x: clamp(top.x + offset.x, badgeRadius + 7, this.sceneWidth - badgeRadius - 7),
+      y: clamp(top.y + offset.y, badgeRadius + 7, this.sceneHeight - badgeRadius - 7),
+    };
+  }
+
+  private drawOrderBadge(runtimeTop: RuntimeTop, x: number, y: number): void {
+    const top = runtimeTop.data;
+    const badgeRadius = getOrderBadgeRadius(this.sceneHeight, runtimeTop.isLocalPlayerTop);
+    const alpha = top.stopped ? 0.58 : 0.98;
+    const background = runtimeTop.orderBadgeBackground;
+
+    background.clear();
+    background.setPosition(x, y);
+    background.fillStyle(0x020617, alpha);
+    background.fillCircle(0, 0, badgeRadius + 5);
+    background.fillStyle(0xffffff, alpha * 0.94);
+    background.fillCircle(0, 0, badgeRadius + 2);
+    background.fillStyle(runtimeTop.identityColor, alpha);
+    background.fillCircle(0, 0, badgeRadius);
+    background.lineStyle(2, 0x020617, alpha * 0.9);
+    background.strokeCircle(0, 0, badgeRadius - 1);
+
+    runtimeTop.orderBadge
+      .setText(`${top.selectionOrder}`)
+      .setFontSize(runtimeTop.isLocalPlayerTop ? Math.max(17, badgeRadius) : Math.max(15, badgeRadius - 1));
+  }
+
+  private spawnIdentityTrail(runtimeTop: RuntimeTop, time: number): void {
+    const top = runtimeTop.data;
+    if (top.stopped || time - runtimeTop.lastTrailAt < IDENTITY_TRAIL_INTERVAL_MS) {
+      return;
+    }
+
+    const speed = getMagnitude(top.vx, top.vy);
+    if (speed < 42) {
+      return;
+    }
+
+    runtimeTop.lastTrailAt = time;
+    const directionX = top.vx / speed;
+    const directionY = top.vy / speed;
+    const trail = this.add.circle(
+      top.x - directionX * top.radius * 0.45,
+      top.y - directionY * top.radius * 0.45,
+      top.radius + 9,
+      runtimeTop.identityColor,
+      0.16,
+    );
+    trail.setStrokeStyle(3, runtimeTop.identityColor, 0.32);
+    trail.setDepth(5);
+
+    this.tweens.add({
+      targets: trail,
+      alpha: 0,
+      scaleX: 0.72,
+      scaleY: 0.72,
+      duration: IDENTITY_TRAIL_DURATION_MS,
+      ease: "Quad.easeOut",
+      onComplete: () => trail.destroy(),
     });
   }
 
@@ -1750,8 +1867,38 @@ function getPairKey(a: string, b: string): string {
   return [a, b].sort().join("|");
 }
 
-function getBattleOrderText(selectionOrder: number, isLocalPlayerTop: boolean): string {
-  return isLocalPlayerTop ? `${selectionOrder}번 내 팽이` : `${selectionOrder}번`;
+function getOrderBadgeRadius(sceneHeight: number, isLocalPlayerTop: boolean): number {
+  if (sceneHeight <= 380) {
+    return isLocalPlayerTop ? 18 : 17;
+  }
+
+  return isLocalPlayerTop ? 23 : 21;
+}
+
+function getOrderBadgeOffset(
+  selectionOrder: number,
+  topRadius: number,
+  badgeRadius: number,
+): { x: number; y: number } {
+  const offsetPattern = [
+    { x: 0, y: -1.08 },
+    { x: 0.86, y: -0.94 },
+    { x: -0.86, y: -0.94 },
+    { x: 0.48, y: -1.28 },
+    { x: -0.48, y: -1.28 },
+    { x: 1.18, y: -0.68 },
+    { x: -1.18, y: -0.68 },
+    { x: 0.18, y: -1.55 },
+    { x: -0.18, y: -1.55 },
+    { x: 0, y: -1.78 },
+  ];
+  const offset = offsetPattern[(Math.max(1, selectionOrder) - 1) % offsetPattern.length];
+  const distance = topRadius + badgeRadius + 8;
+
+  return {
+    x: offset.x * distance,
+    y: offset.y * distance,
+  };
 }
 
 function getEnergyColor(energyRatio: number): number {

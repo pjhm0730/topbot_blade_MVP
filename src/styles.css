@@ -362,6 +362,46 @@ button {
   color: #7a4b00;
 }
 
+.player-identity-chip {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--identity-color);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.9);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 0 8px 0 5px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.26),
+    0 0 14px color-mix(in srgb, var(--identity-color) 55%, transparent);
+}
+
+.player-identity-chip.is-compact {
+  min-height: 21px;
+  font-size: 0.62rem;
+  padding-right: 7px;
+}
+
+.player-identity-swatch {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: var(--identity-color);
+  box-shadow:
+    0 0 0 2px rgba(2, 6, 23, 0.72),
+    0 0 9px var(--identity-color);
+}
+
+.player-identity-chip.is-compact .player-identity-swatch {
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+}
+
 .selection-button {
   width: 100%;
   min-height: 38px;
@@ -800,7 +840,7 @@ button {
 .battle-status-card {
   display: grid;
   min-width: 0;
-  grid-template-columns: 32px 28px minmax(0, 1fr);
+  grid-template-columns: 32px 20px 28px minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   border: 1px solid rgba(142, 202, 230, 0.24);
@@ -841,6 +881,19 @@ button {
   font-size: 0.75rem;
   font-weight: 950;
   white-space: nowrap;
+}
+
+.battle-status-identity {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 3px solid var(--identity-color);
+  border-radius: 999px;
+  background: #020617;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.86),
+    0 0 10px var(--identity-color);
 }
 
 .battle-status-preview {
@@ -1489,6 +1542,19 @@ button {
     padding: 0 5px;
   }
 
+  .player-identity-chip {
+    min-height: 19px;
+    gap: 3px;
+    font-size: 0.56rem;
+    padding: 0 5px 0 3px;
+  }
+
+  .player-identity-swatch {
+    width: 10px;
+    height: 10px;
+    border-width: 1px;
+  }
+
   .selection-button {
     min-height: 26px;
     border-radius: 7px;
@@ -1675,7 +1741,7 @@ button {
   }
 
   .battle-status-card {
-    grid-template-columns: 24px 19px minmax(0, 1fr);
+    grid-template-columns: 24px 14px 19px minmax(0, 1fr);
     gap: 3px;
     border-radius: 6px;
     padding: 2px 3px;
@@ -1683,6 +1749,15 @@ button {
 
   .battle-status-rank {
     font-size: 0.56rem;
+  }
+
+  .battle-status-identity {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.72),
+      0 0 6px var(--identity-color);
   }
 
   .battle-status-preview .blade-disc {

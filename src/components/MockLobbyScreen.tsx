@@ -1,7 +1,9 @@
+import type { CSSProperties } from "react";
 import type { PlayerConfig } from "../types";
 import { createRandomNickname, createRandomNicknames } from "../utils/randomNickname";
 import { BladeSkinPreview } from "./BladeSkinPreview";
 import { pickBladeSkinForNickname, pickRandomBladeSkin } from "../game/bladeSkins";
+import { createPlayerIdentityAssignments } from "../game/playerIdentityColors";
 
 interface MockLobbyScreenProps {
   players: PlayerConfig[];
@@ -40,6 +42,10 @@ function normalizeSelectionOrders(players: PlayerConfig[]): PlayerConfig[] {
 }
 
 export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockLobbyScreenProps) {
+  const identityByPlayerId = new Map(
+    createPlayerIdentityAssignments(players).map((assignment) => [assignment.playerId, assignment]),
+  );
+
   const changePlayerCount = (count: number) => {
     const nextPlayers: PlayerConfig[] = [];
 
@@ -178,6 +184,10 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
       <section className="player-grid">
         {players.map((player, index) => {
           const isSelected = typeof player.selectionOrder === "number";
+          const identityAssignment = identityByPlayerId.get(player.id);
+          const identityColor = identityAssignment?.identityColor ?? "#f8fafc";
+          const identityOrder = identityAssignment?.selectionOrder ?? index + 1;
+
           return (
             <article className={`player-card ${isSelected ? "is-picked-player-card" : ""}`} key={player.id}>
               <div className="player-card-header">
@@ -185,6 +195,13 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
                 <strong>{player.nickname || `플레이어 ${index + 1}`}</strong>
                 <span className={`selection-order-badge ${isSelected ? "is-picked" : ""}`}>
                   {isSelected ? `${player.selectionOrder}번` : "미선택"}
+                </span>
+                <span
+                  className="player-identity-chip"
+                  style={{ "--identity-color": identityColor } as CSSProperties}
+                >
+                  <span className="player-identity-swatch" />
+                  식별 {identityOrder}번
                 </span>
               </div>
               <button

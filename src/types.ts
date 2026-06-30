@@ -33,6 +33,7 @@ export interface BattleTopData {
   nickname: string;
   bladeSkinId: string;
   skinName: string;
+  identityColor: string;
   topType: TopType;
   selectionOrder: number;
   x: number;
@@ -56,6 +57,7 @@ export interface BattleHudTopState {
   nickname: string;
   bladeSkinId: string;
   skinName: string;
+  identityColor: string;
   selectionOrder: number;
   energy: number;
   maxEnergy: number;

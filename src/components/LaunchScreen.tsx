@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { LaunchData, PlayerConfig } from "../types";
 import { audioManager } from "../audio/audioManager";
 import { BladeSkinPreview } from "./BladeSkinPreview";
 import { getBladeSkin } from "../game/bladeSkins";
+import { createPlayerIdentityAssignments } from "../game/playerIdentityColors";
 
 interface LaunchScreenProps {
   players: PlayerConfig[];
@@ -59,6 +61,10 @@ export function LaunchScreen({
   }, [launchCue]);
 
   const currentPower = useMemo(() => 0.6 + timingValue * 0.6, [timingValue]);
+  const identityByPlayerId = useMemo(
+    () => new Map(createPlayerIdentityAssignments(players).map((assignment) => [assignment.playerId, assignment])),
+    [players],
+  );
   const allLaunched = players.every((player) => launches[player.id]);
   const launchList = players
     .map((player) => launches[player.id])
@@ -165,10 +171,13 @@ export function LaunchScreen({
       </section>
 
       <section className="player-grid launch-grid">
-        {players.map((player) => {
+        {players.map((player, index) => {
           const bladeSkin = getBladeSkin(player.bladeSkinId);
           const launch = launches[player.id];
           const isLocalPlayer = player.id === localPlayerId;
+          const identityAssignment = identityByPlayerId.get(player.id);
+          const identityColor = identityAssignment?.identityColor ?? "#f8fafc";
+          const identityOrder = identityAssignment?.selectionOrder ?? index + 1;
           const statusText = launch ? "발사 완료" : isLocalPlayer ? "내 차례" : "다른 플레이어 대기 중";
 
           return (
@@ -176,6 +185,13 @@ export function LaunchScreen({
               <div className="player-card-header">
                 <span className="top-dot" style={{ backgroundColor: bladeSkin.primaryColor }} />
                 <strong>{player.nickname}</strong>
+                <span
+                  className="player-identity-chip is-compact"
+                  style={{ "--identity-color": identityColor } as CSSProperties}
+                >
+                  <span className="player-identity-swatch" />
+                  {identityOrder}번
+                </span>
                 {isLocalPlayer && <span className="status-pill">내 팽이</span>}
               </div>
               <BladeSkinPreview skinId={player.bladeSkinId} size={isLocalPlayer ? "medium" : "small"} />
