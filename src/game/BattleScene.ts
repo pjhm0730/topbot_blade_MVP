@@ -86,6 +86,8 @@ interface LeaderboardRow {
   barFill: Phaser.GameObjects.Rectangle;
 }
 
+type BattlePhase = "countdown" | "fighting" | "finished";
+
 const FALLBACK_SCENE_WIDTH = 1280;
 const FALLBACK_SCENE_HEIGHT = 560;
 const PAIR_SOUND_COOLDOWN_MS = 170;
@@ -97,6 +99,7 @@ const IDENTITY_TRAIL_DURATION_MS = 280;
 export class BattleScene extends Phaser.Scene {
   private readonly options: BattleSceneOptions;
   private tops: RuntimeTop[] = [];
+  private battlePhase: BattlePhase = "countdown";
   private sceneWidth = FALLBACK_SCENE_WIDTH;
   private sceneHeight = FALLBACK_SCENE_HEIGHT;
   private arena = {
@@ -112,6 +115,7 @@ export class BattleScene extends Phaser.Scene {
   private cleanedUp = false;
   private timerText?: Phaser.GameObjects.Text;
   private eventText?: Phaser.GameObjects.Text;
+  private countdownText?: Phaser.GameObjects.Text;
   private lastCollisionAt = 0;
   private lastImpactTextAt = 0;
   private loserCandidatePlayerId: string | null = null;
@@ -144,14 +148,8 @@ export class BattleScene extends Phaser.Scene {
     this.events.once("destroy", this.cleanupScene, this);
     this.scale.on("resize", this.handleScaleResize, this);
 
-    this.maxBattleTimeoutId = window.setTimeout(() => {
-      this.forceFinishByTimeLimit();
-    }, BATTLE_CONFIG.maxBattleDurationMs + 250);
     this.drawArena();
     this.createTops();
-    this.emitStateChange(0, true);
-    this.spawnLaunchBurst();
-    this.spawnLocalPlayerFocusCue();
     const maxBattleSeconds = BATTLE_CONFIG.maxBattleDurationMs / 1000;
     this.timerText = this.add.text(24, 20, `남은 시간 ${maxBattleSeconds.toFixed(1)}초`, {
       fontFamily: "Arial, sans-serif",
@@ -159,15 +157,26 @@ export class BattleScene extends Phaser.Scene {
       color: "#dff6ff",
       fontStyle: "700",
     });
-    this.eventText = this.add.text(24, 48, "전투 시작", {
+    this.eventText = this.add.text(24, 48, "전투 준비", {
       fontFamily: "Arial, sans-serif",
       fontSize: "14px",
       color: "#8ecae6",
     });
+    this.syncVisuals(this.time.now, 0);
+    this.emitStateChange(0, true);
+    this.spawnLocalPlayerFocusCue("내 팽이 준비!");
+    this.startCountdown();
   }
 
   update(time: number, delta: number): void {
     if (this.finished || this.cleanedUp) {
+      return;
+    }
+
+    const deltaSeconds = Math.min(delta / 1000, 0.05);
+    if (this.battlePhase === "countdown") {
+      this.syncVisuals(time, 0);
+      this.emitStateChange(time);
       return;
     }
 
@@ -178,7 +187,6 @@ export class BattleScene extends Phaser.Scene {
     const elapsedMs = time - this.startTime;
     const elapsed = elapsedMs / 1000;
     const maxBattleSeconds = BATTLE_CONFIG.maxBattleDurationMs / 1000;
-    const deltaSeconds = Math.min(delta / 1000, 0.05);
     this.timerText?.setText(`남은 시간 ${Math.max(0, maxBattleSeconds - elapsed).toFixed(1)}초`);
 
     this.updateTopMovement(time, deltaSeconds, elapsedMs);
@@ -204,12 +212,14 @@ export class BattleScene extends Phaser.Scene {
 
   private resetRuntimeState(): void {
     this.tops = [];
+    this.battlePhase = "countdown";
     this.startTime = 0;
     this.battleClockReady = false;
     this.finished = false;
     this.cleanedUp = false;
     this.timerText = undefined;
     this.eventText = undefined;
+    this.countdownText = undefined;
     this.lastCollisionAt = 0;
     this.lastImpactTextAt = 0;
     this.loserCandidatePlayerId = null;
@@ -243,6 +253,119 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  private startCountdown(): void {
+    this.battlePhase = "countdown";
+    this.battleClockReady = false;
+    this.timerText?.setText("전투 시작 대기");
+    this.eventText?.setText("카운트다운 중에는 팽이가 움직이지 않습니다.");
+
+    this.countdownText = this.add
+      .text(this.arena.cx, this.arena.cy, "", {
+        fontFamily: "Arial, sans-serif",
+        fontSize: `${this.getCountdownFontSize(false)}px`,
+        color: "#ffd166",
+        fontStyle: "900",
+        stroke: "#020617",
+        strokeThickness: 10,
+      })
+      .setOrigin(0.5)
+      .setDepth(130);
+
+    for (let value = BATTLE_CONFIG.countdownSeconds; value >= 1; value -= 1) {
+      const delayMs = (BATTLE_CONFIG.countdownSeconds - value) * 1000;
+      this.time.delayedCall(delayMs, () => {
+        if (this.battlePhase !== "countdown" || this.cleanedUp) {
+          return;
+        }
+
+        this.eventText?.setText(`전투 시작까지 ${value}`);
+        this.showCountdownText(`${value}`, false);
+      });
+    }
+
+    this.time.delayedCall(BATTLE_CONFIG.countdownSeconds * 1000, () => {
+      if (this.battlePhase !== "countdown" || this.cleanedUp) {
+        return;
+      }
+
+      this.showCountdownText("GO!", true);
+      this.beginFighting(this.time.now);
+    });
+  }
+
+  private beginFighting(time: number): void {
+    if (this.battlePhase !== "countdown" || this.cleanedUp || this.finished) {
+      return;
+    }
+
+    this.battlePhase = "fighting";
+    this.initializeBattleClock(time);
+    this.maxBattleTimeoutId = window.setTimeout(() => {
+      this.forceFinishByTimeLimit();
+    }, BATTLE_CONFIG.maxBattleDurationMs + 250);
+
+    this.tops.forEach((runtimeTop) => {
+      const top = runtimeTop.data;
+      const centerAngle = Math.atan2(this.arena.cy - top.y, this.arena.cx - top.x);
+      const launchAngle = centerAngle + Phaser.Math.FloatBetween(-0.55, 0.55);
+      top.vx = Math.cos(launchAngle) * top.speed;
+      top.vy = Math.sin(launchAngle) * top.speed;
+      runtimeTop.nextTargetAt = time + Phaser.Math.Between(250, 700);
+      runtimeTop.nextRandomSteerAt = time;
+      runtimeTop.lastSampleAt = time;
+      runtimeTop.sampleX = top.x;
+      runtimeTop.sampleY = top.y;
+      runtimeTop.stuckSeconds = 0;
+    });
+
+    const maxBattleSeconds = BATTLE_CONFIG.maxBattleDurationMs / 1000;
+    this.timerText?.setText(`남은 시간 ${maxBattleSeconds.toFixed(1)}초`);
+    this.eventText?.setText("전투 시작");
+    this.spawnLaunchBurst(false);
+    this.spawnLocalPlayerFocusCue("내 팽이 출격!");
+    this.emitStateChange(time, true);
+  }
+
+  private showCountdownText(value: string, isGo: boolean): void {
+    if (!this.countdownText) {
+      return;
+    }
+
+    this.tweens.killTweensOf(this.countdownText);
+    this.positionCountdownText();
+    this.countdownText
+      .setText(value)
+      .setFontSize(this.getCountdownFontSize(isGo))
+      .setColor(isGo ? "#7cff00" : "#ffd166")
+      .setStroke("#020617", isGo ? 12 : 10)
+      .setAlpha(1)
+      .setScale(isGo ? 0.82 : 0.72)
+      .setVisible(true);
+
+    this.tweens.add({
+      targets: this.countdownText,
+      scaleX: isGo ? 1.22 : 1.08,
+      scaleY: isGo ? 1.22 : 1.08,
+      alpha: isGo ? 0 : 0.18,
+      duration: isGo ? BATTLE_CONFIG.countdownGoDurationMs : 840,
+      ease: "Cubic.easeOut",
+      onComplete: () => {
+        if (isGo) {
+          this.countdownText?.setVisible(false);
+        }
+      },
+    });
+  }
+
+  private positionCountdownText(): void {
+    this.countdownText?.setPosition(this.arena.cx, this.arena.cy);
+  }
+
+  private getCountdownFontSize(isGo: boolean): number {
+    const baseSize = clamp(Math.min(this.sceneWidth, this.sceneHeight) * (isGo ? 0.2 : 0.28), 72, 150);
+    return Math.round(baseSize);
+  }
+
   private cleanupScene(): void {
     if (this.cleanedUp) {
       return;
@@ -250,6 +373,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.cleanedUp = true;
     this.finished = true;
+    this.battlePhase = "finished";
     this.pairCollisionHistories.clear();
     this.visualCooldowns.clear();
     this.soundCooldowns.clear();
@@ -261,6 +385,8 @@ export class BattleScene extends Phaser.Scene {
     this.leaderboardPanel = undefined;
     this.leaderboardTitle?.destroy();
     this.leaderboardTitle = undefined;
+    this.countdownText?.destroy();
+    this.countdownText = undefined;
     this.activeSparkCount = 0;
     this.scale.off("resize", this.handleScaleResize, this);
     this.arenaGraphics?.destroy();
@@ -296,7 +422,13 @@ export class BattleScene extends Phaser.Scene {
     this.drawArena();
     this.timerText?.setPosition(24, 18);
     this.eventText?.setPosition(24, 44);
+    this.positionCountdownText();
+    this.countdownText?.setFontSize(this.getCountdownFontSize(this.countdownText.text === "GO!"));
     this.tops.forEach((runtimeTop) => this.clampTopInsideArena(runtimeTop.data));
+    if (this.battlePhase === "countdown") {
+      this.layoutPreBattleTops();
+      this.syncVisuals(this.time.now, 0);
+    }
     this.layoutLeaderboard(true);
   }
 
@@ -322,6 +454,34 @@ export class BattleScene extends Phaser.Scene {
     const scaleToBoundary = 1 / Math.sqrt(normalized);
     top.x = this.arena.cx + dx * scaleToBoundary;
     top.y = this.arena.cy + dy * scaleToBoundary;
+  }
+
+  private getPreBattleSpawnPosition(index: number, total: number, topRadius: number): { x: number; y: number } {
+    const count = Math.max(1, total);
+    const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+    const margin = topRadius + BATTLE_CONFIG.preBattleSpawnMargin;
+    const radiusX = Math.max(1, this.arena.radiusX * BATTLE_CONFIG.preBattleSpawnRadiusRatio - margin);
+    const radiusY = Math.max(1, this.arena.radiusY * BATTLE_CONFIG.preBattleSpawnRadiusRatio - margin);
+
+    return {
+      x: this.arena.cx + Math.cos(angle) * radiusX,
+      y: this.arena.cy + Math.sin(angle) * radiusY,
+    };
+  }
+
+  private layoutPreBattleTops(): void {
+    const total = this.tops.length;
+    this.tops.forEach((runtimeTop, index) => {
+      const top = runtimeTop.data;
+      const position = this.getPreBattleSpawnPosition(index, total, top.radius);
+      top.x = position.x;
+      top.y = position.y;
+      top.vx = 0;
+      top.vy = 0;
+      runtimeTop.sampleX = top.x;
+      runtimeTop.sampleY = top.y;
+      runtimeTop.lastTrailAt = -Infinity;
+    });
   }
 
   private drawArena(): void {
@@ -391,12 +551,9 @@ export class BattleScene extends Phaser.Scene {
       const primaryColor = hexToNumber(skin.primaryColor);
       const secondaryColor = hexToNumber(skin.secondaryColor);
       const accentColor = hexToNumber(skin.accentColor);
-      const angle = total <= 2 ? index * Math.PI : (index / total) * Math.PI * 2 - Math.PI / 2;
-      const positionScale = total <= 2 ? 0.38 : 0.52;
-      const x = this.arena.cx + Math.cos(angle) * this.arena.radiusX * positionScale + Phaser.Math.FloatBetween(-12, 12);
-      const y = this.arena.cy + Math.sin(angle) * this.arena.radiusY * positionScale + Phaser.Math.FloatBetween(-8, 8);
-      const centerAngle = Math.atan2(this.arena.cy - y, this.arena.cx - x);
-      const launchAngle = centerAngle + Phaser.Math.FloatBetween(-0.55, 0.55);
+      const spawnPosition = this.getPreBattleSpawnPosition(index, total, stats.radius);
+      const x = spawnPosition.x;
+      const y = spawnPosition.y;
       const speed = stats.speed * (0.78 + launchPower * 0.58) * BATTLE_CONFIG.battleStartBoost;
       const randomTraits = getAiTraits(player.topType);
 
@@ -411,8 +568,8 @@ export class BattleScene extends Phaser.Scene {
         selectionOrder,
         x,
         y,
-        vx: Math.cos(launchAngle) * speed,
-        vy: Math.sin(launchAngle) * speed,
+        vx: 0,
+        vy: 0,
         radius: stats.radius,
         energy: stats.maxEnergy,
         maxEnergy: stats.maxEnergy,
@@ -1140,6 +1297,11 @@ export class BattleScene extends Phaser.Scene {
       this.drawOrderBadge(runtimeTop, orderBadgePosition.x, orderBadgePosition.y);
       runtimeTop.orderBadge.setPosition(orderBadgePosition.x, orderBadgePosition.y);
       runtimeTop.orderBadge.setAlpha(top.stopped ? 0.62 : 0.94);
+      runtimeTop.label.setText(
+        this.battlePhase === "countdown" && runtimeTop.isLocalPlayerTop
+          ? `${top.selectionOrder}번 내 팽이`
+          : top.nickname,
+      );
       runtimeTop.label.setPosition(labelX, labelY);
       runtimeTop.label.setAlpha(top.stopped ? 0.55 : 1);
       runtimeTop.energyBarBack.setPosition(energyBarX, energyBarY);
@@ -1210,7 +1372,7 @@ export class BattleScene extends Phaser.Scene {
 
   private spawnIdentityTrail(runtimeTop: RuntimeTop, time: number): void {
     const top = runtimeTop.data;
-    if (top.stopped || time - runtimeTop.lastTrailAt < IDENTITY_TRAIL_INTERVAL_MS) {
+    if (this.battlePhase !== "fighting" || top.stopped || time - runtimeTop.lastTrailAt < IDENTITY_TRAIL_INTERVAL_MS) {
       return;
     }
 
@@ -1306,20 +1468,24 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const top = runtimeTop.data;
+    const isCountdown = this.battlePhase === "countdown";
     const pulse = (Math.sin(time * BATTLE_CONFIG.localPlayerPulseSpeed) + 1) / 2;
     const stoppedAlphaMultiplier = top.stopped ? 0.45 : 1;
-    const ringAlpha = (0.4 + pulse * 0.6) * stoppedAlphaMultiplier;
-    const glowAlpha = (0.2 + pulse * 0.25) * stoppedAlphaMultiplier;
-    const baseRadius = top.radius + (runtimeTop.isLoserCandidateTop || runtimeTop.isFinalLoserTop ? 31 : 14);
-    const pulseRadius = baseRadius + pulse * 5;
+    const ringAlpha = (isCountdown ? 0.68 + pulse * 0.32 : 0.4 + pulse * 0.6) * stoppedAlphaMultiplier;
+    const glowAlpha = (isCountdown ? 0.34 + pulse * 0.32 : 0.2 + pulse * 0.25) * stoppedAlphaMultiplier;
+    const baseRadius =
+      top.radius +
+      (runtimeTop.isLoserCandidateTop || runtimeTop.isFinalLoserTop ? 31 : 14) +
+      (isCountdown ? 14 : 0);
+    const pulseRadius = baseRadius + pulse * (isCountdown ? 9 : 5);
 
     runtimeTop.localHighlightRing.clear();
     runtimeTop.localHighlightRing.setPosition(top.x, top.y);
-    runtimeTop.localHighlightRing.lineStyle(9, BATTLE_CONFIG.localPlayerGlowColor, glowAlpha);
+    runtimeTop.localHighlightRing.lineStyle(isCountdown ? 15 : 9, BATTLE_CONFIG.localPlayerGlowColor, glowAlpha);
     runtimeTop.localHighlightRing.strokeCircle(0, 0, pulseRadius + 6);
-    runtimeTop.localHighlightRing.lineStyle(4, BATTLE_CONFIG.localPlayerRingColor, ringAlpha);
+    runtimeTop.localHighlightRing.lineStyle(isCountdown ? 7 : 4, BATTLE_CONFIG.localPlayerRingColor, ringAlpha);
     runtimeTop.localHighlightRing.strokeCircle(0, 0, pulseRadius);
-    runtimeTop.localHighlightRing.lineStyle(2, 0xffffff, ringAlpha * 0.82);
+    runtimeTop.localHighlightRing.lineStyle(isCountdown ? 4 : 2, 0xffffff, ringAlpha * 0.82);
     runtimeTop.localHighlightRing.strokeCircle(0, 0, top.radius + 8);
 
     const markerY = clamp(top.y - top.radius - 23 - pulse * 3, 16, this.sceneHeight - 20);
@@ -1492,7 +1658,7 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private spawnLaunchBurst(): void {
+  private spawnLaunchBurst(showText = true): void {
     this.cameras.main.shake(180, 0.0022);
 
     const burst = this.add.circle(this.arena.cx, this.arena.cy, 26, 0xffffff, 0.44);
@@ -1507,6 +1673,10 @@ export class BattleScene extends Phaser.Scene {
       ease: "Cubic.easeOut",
       onComplete: () => burst.destroy(),
     });
+
+    if (!showText) {
+      return;
+    }
 
     const launchText = this.add
       .text(this.arena.cx, this.arena.cy - 10, "고~~ 슛!", {
@@ -1531,7 +1701,7 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  private spawnLocalPlayerFocusCue(): void {
+  private spawnLocalPlayerFocusCue(message = "내 팽이 출격!"): void {
     const localTop = this.tops.find((runtimeTop) => runtimeTop.isLocalPlayerTop);
     if (!localTop || !BATTLE_CONFIG.localPlayerHighlightEnabled) {
       return;
@@ -1547,7 +1717,7 @@ export class BattleScene extends Phaser.Scene {
     focusGlow.setDepth(BATTLE_CONFIG.localPlayerHighlightDepth + 11);
 
     const focusText = this.add
-      .text(top.x, top.y - top.radius - 58, "내 팽이 출격!", {
+      .text(top.x, top.y - top.radius - 58, message, {
         fontFamily: "Arial, sans-serif",
         fontSize: "18px",
         color: "#07111f",
@@ -1732,6 +1902,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.markFinalLoser(beverageBuyerId);
     this.finished = true;
+    this.battlePhase = "finished";
     if (this.maxBattleTimeoutId !== null) {
       window.clearTimeout(this.maxBattleTimeoutId);
       this.maxBattleTimeoutId = null;
@@ -1766,7 +1937,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private forceFinishByTimeLimit(): void {
-    if (this.finished || this.cleanedUp || this.tops.length === 0) {
+    if (this.battlePhase !== "fighting" || this.finished || this.cleanedUp || this.tops.length === 0) {
       return;
     }
 

@@ -1,4 +1,10 @@
 export const BATTLE_CONFIG = {
+  // Battle Scene 진입 후 실제 전투 시작 전 카운트다운.
+  countdownSeconds: 3,
+  countdownGoDurationMs: 500,
+  preBattleSpawnRadiusRatio: 0.65,
+  preBattleSpawnMargin: 34,
+
   // 전투 시간 제한. 초반에는 실제 탈락을 막고, 20초에는 마지막 생존 후보를 결과로 확정합니다.
   minEliminationTimeMs: 6500,
   softProtectionEndMs: 7000,
