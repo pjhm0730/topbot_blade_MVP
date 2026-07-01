@@ -296,13 +296,51 @@ button {
   background: rgba(255, 255, 255, 0.93);
   color: #14213d;
   padding: 16px;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
 }
 
-.player-card.is-picked-player-card {
-  border-color: rgba(255, 209, 102, 0.74);
+.lobby-screen .player-card {
+  cursor: pointer;
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.9);
+  color: #dff6ff;
+}
+
+.lobby-screen .player-card:hover {
+  border-color: color-mix(in srgb, var(--identity-color, #f8fafc) 45%, rgba(148, 163, 184, 0.28));
+  transform: translateY(-1px);
+}
+
+.lobby-screen .player-card:focus-visible {
+  outline: 2px solid var(--identity-color, #8ecae6);
+  outline-offset: 3px;
+}
+
+.player-card.is-picked-player-card,
+.player-card.player-card--selected {
+  border-color: var(--identity-color, #ffd166);
   box-shadow:
-    0 0 0 2px rgba(255, 209, 102, 0.18),
-    0 16px 34px rgba(255, 209, 102, 0.12);
+    0 0 0 2px color-mix(in srgb, var(--identity-color, #ffd166) 60%, transparent),
+    0 0 22px color-mix(in srgb, var(--identity-color, #ffd166) 45%, transparent),
+    0 16px 34px rgba(2, 6, 23, 0.18);
+}
+
+.lobby-screen .player-card--selected {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--identity-color, #ffd166) 28%, transparent), transparent 42%),
+    rgba(15, 23, 42, 0.96);
+}
+
+.lobby-screen .player-card .blade-preview-meta strong {
+  color: #f8fafc;
+}
+
+.lobby-screen .player-card .blade-preview-meta span {
+  color: #b8c7d9;
 }
 
 .nickname-row {
@@ -341,6 +379,12 @@ button {
   font-weight: 800;
 }
 
+.lobby-screen .player-number {
+  background: var(--identity-color, #14213d);
+  color: #020617;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--identity-color, #8ecae6) 36%, transparent);
+}
+
 .selection-order-badge,
 .result-order-chip,
 .result-compact-order {
@@ -360,6 +404,17 @@ button {
 .result-compact-order.has-order {
   background: rgba(255, 209, 102, 0.34);
   color: #7a4b00;
+}
+
+.lobby-screen .selection-order-badge {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+}
+
+.lobby-screen .player-card--selected .selection-badge {
+  background: var(--identity-color, #ffd166);
+  color: #020617;
+  font-weight: 900;
 }
 
 .player-identity-chip {
@@ -413,10 +468,26 @@ button {
   font-weight: 900;
 }
 
+.lobby-screen .selection-button {
+  width: fit-content;
+  min-height: 30px;
+  justify-self: start;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(148, 163, 184, 0.14);
+  color: #dff6ff;
+  padding: 0 10px;
+}
+
 .selection-button.is-picked {
   border-color: rgba(235, 87, 87, 0.32);
   background: rgba(255, 236, 236, 0.95);
   color: #b4232a;
+}
+
+.lobby-screen .selection-button.is-picked {
+  border-color: var(--identity-color, #ffd166);
+  background: color-mix(in srgb, var(--identity-color, #ffd166) 16%, rgba(2, 6, 23, 0.88));
+  color: #f8fafc;
 }
 
 .top-dot {

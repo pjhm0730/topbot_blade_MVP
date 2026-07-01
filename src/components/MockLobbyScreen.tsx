@@ -22,21 +22,15 @@ function createPlayer(index: number, existingNicknames: string[]): PlayerConfig 
 }
 
 function normalizeSelectionOrders(players: PlayerConfig[]): PlayerConfig[] {
-  const selectedIds = players
-    .filter((player) => typeof player.selectionOrder === "number")
-    .sort((a, b) => (a.selectionOrder ?? 0) - (b.selectionOrder ?? 0))
-    .map((player) => player.id);
-
-  return players.map((player) => {
-    const selectedIndex = selectedIds.indexOf(player.id);
-    if (selectedIndex < 0) {
+  return players.map((player, index) => {
+    if (typeof player.selectionOrder !== "number") {
       const { selectionOrder: _selectionOrder, ...nextPlayer } = player;
       return nextPlayer;
     }
 
     return {
       ...player,
-      selectionOrder: selectedIndex + 1,
+      selectionOrder: index + 1,
     };
   });
 }
@@ -121,32 +115,32 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
   };
 
   const togglePlayerSelection = (playerId: string) => {
-    const selectedPlayer = players.find((player) => player.id === playerId);
-    if (!selectedPlayer) {
+    const playerIndex = players.findIndex((player) => player.id === playerId);
+    if (playerIndex < 0) {
       return;
     }
 
-    if (selectedPlayer.selectionOrder) {
-      onPlayersChange(
-        normalizeSelectionOrders(
-          players.map((player) =>
-            player.id === playerId
-              ? {
-                  ...player,
-                  selectionOrder: undefined,
-                }
-              : player,
-          ),
-        ),
-      );
-      return;
-    }
+    const selectedPlayer = players[playerIndex];
 
-    const nextOrder =
-      players.reduce((maxOrder, player) => Math.max(maxOrder, player.selectionOrder ?? 0), 0) + 1;
-    updatePlayer(playerId, {
-      selectionOrder: nextOrder,
-    });
+    onPlayersChange(
+      normalizeSelectionOrders(
+        players.map((player, index) => {
+          if (player.id !== playerId) {
+            return player;
+          }
+
+          if (typeof selectedPlayer.selectionOrder === "number") {
+            const { selectionOrder: _selectionOrder, ...nextPlayer } = player;
+            return nextPlayer;
+          }
+
+          return {
+            ...player,
+            selectionOrder: index + 1,
+          };
+        }),
+      ),
+    );
   };
 
   return (
@@ -186,20 +180,30 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
           const isSelected = typeof player.selectionOrder === "number";
           const identityAssignment = identityByPlayerId.get(player.id);
           const identityColor = identityAssignment?.identityColor ?? "#f8fafc";
-          const identityOrder = identityAssignment?.selectionOrder ?? index + 1;
+          const identityOrder = identityAssignment?.identityOrder ?? index + 1;
 
           return (
-            <article className={`player-card ${isSelected ? "is-picked-player-card" : ""}`} key={player.id}>
+            <article
+              className={`player-card ${isSelected ? "is-picked-player-card player-card--selected" : ""}`}
+              key={player.id}
+              role="button"
+              tabIndex={0}
+              style={{ "--identity-color": identityColor } as CSSProperties}
+              onClick={() => togglePlayerSelection(player.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  togglePlayerSelection(player.id);
+                }
+              }}
+            >
               <div className="player-card-header">
                 <span className="player-number">{index + 1}</span>
                 <strong>{player.nickname || `플레이어 ${index + 1}`}</strong>
-                <span className={`selection-order-badge ${isSelected ? "is-picked" : ""}`}>
-                  {isSelected ? `${player.selectionOrder}번` : "미선택"}
+                <span className={`selection-order-badge selection-badge ${isSelected ? "is-picked" : ""}`}>
+                  {isSelected ? `${identityOrder}번 선택됨` : "카드를 눌러 선택"}
                 </span>
-                <span
-                  className="player-identity-chip"
-                  style={{ "--identity-color": identityColor } as CSSProperties}
-                >
+                <span className="player-identity-chip">
                   <span className="player-identity-swatch" />
                   식별 {identityOrder}번
                 </span>
@@ -207,25 +211,47 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
               <button
                 className={`selection-button ${isSelected ? "is-picked" : ""}`}
                 type="button"
-                onClick={() => togglePlayerSelection(player.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  togglePlayerSelection(player.id);
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
               >
                 {isSelected ? "선택 해제" : "선택"}
               </button>
               <div className="nickname-row">
-                <label className="field">
+                <label className="field" onClick={(event) => event.stopPropagation()}>
                   <span>닉네임</span>
                   <input
                     value={player.nickname}
                     maxLength={16}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                     onChange={(event) => updatePlayer(player.id, { nickname: event.target.value })}
                   />
                 </label>
-                <button className="secondary-button small-button" type="button" onClick={() => rerollPlayerNickname(player.id)}>
+                <button
+                  className="secondary-button small-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    rerollPlayerNickname(player.id);
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   랜덤
                 </button>
               </div>
               <BladeSkinPreview skinId={player.bladeSkinId} />
-              <button className="secondary-button full-width" type="button" onClick={() => rerollPlayerSkin(player.id)}>
+              <button
+                className="secondary-button full-width"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  rerollPlayerSkin(player.id);
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
                 팽이 랜덤 선택
               </button>
             </article>

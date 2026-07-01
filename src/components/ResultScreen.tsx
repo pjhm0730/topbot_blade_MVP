@@ -1,6 +1,7 @@
 import type { BattleResult, PlayerConfig } from "../types";
 import { BladeSkinPreview } from "./BladeSkinPreview";
 import { getBladeSkin } from "../game/bladeSkins";
+import { createPlayerIdentityAssignments } from "../game/playerIdentityColors";
 
 interface ResultScreenProps {
   result: BattleResult;
@@ -14,8 +15,8 @@ function formatSeconds(value: number): string {
   return `${value.toFixed(1)}초`;
 }
 
-function formatSelectionOrder(player?: PlayerConfig): string | null {
-  return player?.selectionOrder ? `${player.selectionOrder}번` : null;
+function formatSelectionOrder(selectionOrder?: number): string | null {
+  return typeof selectionOrder === "number" ? `${selectionOrder}번` : null;
 }
 
 function getResultReasonText(reason: BattleResult["reason"]): string {
@@ -37,6 +38,13 @@ function getResultReasonText(reason: BattleResult["reason"]): string {
 export function ResultScreen({ result, players, localPlayerId, onRetry, onBackToLobby }: ResultScreenProps) {
   const beverageBuyerId = result.beverageBuyerId ?? result.loserId;
   const beverageBuyerNickname = result.beverageBuyerNickname ?? result.loserNickname;
+  const identityByPlayerId = new Map(
+    createPlayerIdentityAssignments(players).map((assignment) => [assignment.playerId, assignment]),
+  );
+  const getSelectionOrderText = (playerId: string, player?: PlayerConfig): string | null => {
+    const fixedOrder = player?.selectionOrder ?? identityByPlayerId.get(playerId)?.selectionOrder;
+    return formatSelectionOrder(fixedOrder);
+  };
   const sortedSummaries = [...result.summaries].sort((a, b) => {
     if (a.playerId === beverageBuyerId) {
       return -1;
@@ -50,7 +58,7 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
   });
   const beverageBuyerSummary = sortedSummaries.find((summary) => summary.playerId === beverageBuyerId);
   const beverageBuyerPlayer = players.find((player) => player.id === beverageBuyerId);
-  const beverageBuyerSelectionOrder = formatSelectionOrder(beverageBuyerPlayer);
+  const beverageBuyerSelectionOrder = getSelectionOrderText(beverageBuyerId, beverageBuyerPlayer);
   const beverageBuyerDisplayName = beverageBuyerSelectionOrder
     ? `${beverageBuyerSelectionOrder} ${beverageBuyerNickname}`
     : beverageBuyerNickname;
@@ -92,7 +100,7 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
               const bladeSkin = getBladeSkin(player?.bladeSkinId ?? summary.bladeSkinId);
               const isBeverageBuyer = summary.playerId === beverageBuyerId;
               const isLocalPlayer = summary.playerId === localPlayerId;
-              const selectionOrder = formatSelectionOrder(player);
+              const selectionOrder = getSelectionOrderText(summary.playerId, player);
 
               return (
                 <tr key={summary.playerId} className={isBeverageBuyer ? "buyer-row" : undefined}>
@@ -133,7 +141,7 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
           const bladeSkin = getBladeSkin(player?.bladeSkinId ?? summary.bladeSkinId);
           const isBeverageBuyer = summary.playerId === beverageBuyerId;
           const isLocalPlayer = summary.playerId === localPlayerId;
-          const selectionOrder = formatSelectionOrder(player);
+          const selectionOrder = getSelectionOrderText(summary.playerId, player);
 
           return (
             <article

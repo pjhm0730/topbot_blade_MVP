@@ -1,110 +1,51 @@
 import type { PlayerConfig } from "../types";
 
 export const PLAYER_IDENTITY_COLOR_PALETTE = [
-  "#ff2d55",
-  "#00e676",
-  "#2979ff",
-  "#ffd600",
-  "#ff8c00",
-  "#bf5af2",
-  "#00e5ff",
-  "#f8fafc",
-  "#ff4fd8",
-  "#7cff00",
+  "#00E5FF",
+  "#FF3D71",
+  "#FFD600",
+  "#00E676",
+  "#B388FF",
+  "#FF9100",
+  "#40C4FF",
+  "#FF6E40",
+  "#64FFDA",
+  "#F50057",
 ] as const;
+
+export const PLAYER_IDENTITY_COLORS = PLAYER_IDENTITY_COLOR_PALETTE;
 
 export interface PlayerIdentityAssignment {
   playerId: string;
+  playerIndex: number;
+  identityOrder: number;
   selectionOrder: number;
   identityColor: string;
 }
 
 export function createPlayerIdentityAssignments(players: readonly PlayerConfig[]): PlayerIdentityAssignment[] {
-  const indexedPlayers = players.map((player, sourceIndex) => ({ player, sourceIndex }));
-  const selectedPlayers = indexedPlayers
-    .filter(({ player }) => isValidSelectionOrder(player.selectionOrder))
-    .sort(
-      (a, b) =>
-        (a.player.selectionOrder ?? 0) - (b.player.selectionOrder ?? 0) ||
-        a.sourceIndex - b.sourceIndex,
-    );
-  const selectionOrderByPlayerId = new Map<string, number>();
-  let nextOrder = 1;
+  return players.map((player, index) => ({
+    playerId: player.id,
+    playerIndex: index,
+    identityOrder: index + 1,
+    selectionOrder: index + 1,
+    identityColor: getPlayerIdentityColorByIndex(index),
+  }));
+}
 
-  selectedPlayers.forEach(({ player }) => {
-    if (selectionOrderByPlayerId.has(player.id)) {
-      return;
-    }
-
-    selectionOrderByPlayerId.set(player.id, nextOrder);
-    nextOrder += 1;
-  });
-
-  indexedPlayers.forEach(({ player }) => {
-    if (selectionOrderByPlayerId.has(player.id)) {
-      return;
-    }
-
-    selectionOrderByPlayerId.set(player.id, nextOrder);
-    nextOrder += 1;
-  });
-
-  return indexedPlayers.map(({ player, sourceIndex }) => {
-    const selectionOrder = selectionOrderByPlayerId.get(player.id) ?? sourceIndex + 1;
-
-    return {
-      playerId: player.id,
-      selectionOrder,
-      identityColor: getPlayerIdentityColor(selectionOrder),
-    };
-  });
+export function getPlayerIdentityColorByIndex(index: number): string {
+  const normalizedIndex = Number.isFinite(index) ? Math.max(0, Math.trunc(index)) : 0;
+  return PLAYER_IDENTITY_COLOR_PALETTE[normalizedIndex % PLAYER_IDENTITY_COLOR_PALETTE.length];
 }
 
 export function getPlayerIdentityColor(selectionOrder: number): string {
-  const paletteIndex = Math.max(0, Math.round(selectionOrder) - 1);
-  return PLAYER_IDENTITY_COLOR_PALETTE[paletteIndex] ?? createOverflowIdentityColor(paletteIndex);
+  return getPlayerIdentityColorByIndex(selectionOrder - 1);
 }
 
 export function getIdentityTextColor(identityColor: string): "#020617" | "#ffffff" {
   const color = parseHexColor(identityColor);
   const brightness = (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
   return brightness >= 150 ? "#020617" : "#ffffff";
-}
-
-function isValidSelectionOrder(selectionOrder: number | undefined): selectionOrder is number {
-  return typeof selectionOrder === "number" && Number.isFinite(selectionOrder) && selectionOrder > 0;
-}
-
-function createOverflowIdentityColor(index: number): string {
-  const hue = (index * 137.508) % 360;
-  return hslToHex(hue, 92, 58);
-}
-
-function hslToHex(hue: number, saturation: number, lightness: number): string {
-  const normalizedSaturation = saturation / 100;
-  const normalizedLightness = lightness / 100;
-  const chroma = (1 - Math.abs(2 * normalizedLightness - 1)) * normalizedSaturation;
-  const huePrime = hue / 60;
-  const x = chroma * (1 - Math.abs((huePrime % 2) - 1));
-  const match = normalizedLightness - chroma / 2;
-  const [r, g, b] =
-    huePrime < 1
-      ? [chroma, x, 0]
-      : huePrime < 2
-        ? [x, chroma, 0]
-        : huePrime < 3
-          ? [0, chroma, x]
-          : huePrime < 4
-            ? [0, x, chroma]
-            : huePrime < 5
-              ? [x, 0, chroma]
-              : [chroma, 0, x];
-
-  return `#${toHexChannel((r + match) * 255)}${toHexChannel((g + match) * 255)}${toHexChannel((b + match) * 255)}`;
-}
-
-function toHexChannel(value: number): string {
-  return Math.round(value).toString(16).padStart(2, "0");
 }
 
 function parseHexColor(hexColor: string): { r: number; g: number; b: number } {
