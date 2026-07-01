@@ -29,7 +29,7 @@ export function createPlayerIdentityAssignments(players: readonly PlayerConfig[]
     playerIndex: index,
     identityOrder: index + 1,
     selectionOrder: index + 1,
-    identityColor: getPlayerIdentityColorByIndex(index),
+    identityColor: getPlayerIdentityColor(index + 1),
   }));
 }
 

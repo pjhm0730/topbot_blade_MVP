@@ -120,26 +120,22 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
       return;
     }
 
-    const selectedPlayer = players[playerIndex];
-
     onPlayersChange(
-      normalizeSelectionOrders(
-        players.map((player, index) => {
-          if (player.id !== playerId) {
-            return player;
-          }
+      players.map((player, index) => {
+        if (player.id !== playerId) {
+          return player;
+        }
 
-          if (typeof selectedPlayer.selectionOrder === "number") {
-            const { selectionOrder: _selectionOrder, ...nextPlayer } = player;
-            return nextPlayer;
-          }
+        if (typeof player.selectionOrder === "number") {
+          const { selectionOrder: _selectionOrder, ...nextPlayer } = player;
+          return nextPlayer;
+        }
 
-          return {
-            ...player,
-            selectionOrder: index + 1,
-          };
-        }),
-      ),
+        return {
+          ...player,
+          selectionOrder: index + 1,
+        };
+      }),
     );
   };
 
@@ -180,11 +176,11 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
           const isSelected = typeof player.selectionOrder === "number";
           const identityAssignment = identityByPlayerId.get(player.id);
           const identityColor = identityAssignment?.identityColor ?? "#f8fafc";
-          const identityOrder = identityAssignment?.identityOrder ?? index + 1;
+          const fixedPlayerNumber = index + 1;
 
           return (
             <article
-              className={`player-card ${isSelected ? "is-picked-player-card player-card--selected" : ""}`}
+              className={`player-card ${isSelected ? "is-picked-player-card" : ""}`}
               key={player.id}
               role="button"
               tabIndex={0}
@@ -198,27 +194,16 @@ export function MockLobbyScreen({ players, onPlayersChange, onStartGame }: MockL
               }}
             >
               <div className="player-card-header">
-                <span className="player-number">{index + 1}</span>
+                <span className="player-number">{fixedPlayerNumber}</span>
                 <strong>{player.nickname || `플레이어 ${index + 1}`}</strong>
                 <span className={`selection-order-badge selection-badge ${isSelected ? "is-picked" : ""}`}>
-                  {isSelected ? `${identityOrder}번 선택됨` : "카드를 눌러 선택"}
+                  {isSelected ? `${fixedPlayerNumber}번 선택됨` : "미선택"}
                 </span>
                 <span className="player-identity-chip">
                   <span className="player-identity-swatch" />
-                  식별 {identityOrder}번
+                  식별 {fixedPlayerNumber}번
                 </span>
               </div>
-              <button
-                className={`selection-button ${isSelected ? "is-picked" : ""}`}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  togglePlayerSelection(player.id);
-                }}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
-                {isSelected ? "선택 해제" : "선택"}
-              </button>
               <div className="nickname-row">
                 <label className="field" onClick={(event) => event.stopPropagation()}>
                   <span>닉네임</span>

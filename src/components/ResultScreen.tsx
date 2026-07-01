@@ -42,7 +42,7 @@ export function ResultScreen({ result, players, localPlayerId, onRetry, onBackTo
     createPlayerIdentityAssignments(players).map((assignment) => [assignment.playerId, assignment]),
   );
   const getSelectionOrderText = (playerId: string, player?: PlayerConfig): string | null => {
-    const fixedOrder = player?.selectionOrder ?? identityByPlayerId.get(playerId)?.selectionOrder;
+    const fixedOrder = identityByPlayerId.get(playerId)?.selectionOrder ?? player?.selectionOrder;
     return formatSelectionOrder(fixedOrder);
   };
   const sortedSummaries = [...result.summaries].sort((a, b) => {

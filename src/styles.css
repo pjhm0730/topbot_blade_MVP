@@ -291,7 +291,7 @@ button {
 .player-card {
   display: grid;
   gap: 14px;
-  border: 1px solid rgba(142, 202, 230, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.93);
   color: #14213d;
@@ -305,13 +305,13 @@ button {
 
 .lobby-screen .player-card {
   cursor: pointer;
-  border-color: rgba(148, 163, 184, 0.28);
+  border-color: rgba(148, 163, 184, 0.3);
   background: rgba(15, 23, 42, 0.9);
   color: #dff6ff;
 }
 
 .lobby-screen .player-card:hover {
-  border-color: color-mix(in srgb, var(--identity-color, #f8fafc) 45%, rgba(148, 163, 184, 0.28));
+  border-color: var(--identity-color, #f8fafc);
   transform: translateY(-1px);
 }
 
@@ -320,18 +320,15 @@ button {
   outline-offset: 3px;
 }
 
-.player-card.is-picked-player-card,
-.player-card.player-card--selected {
+.lobby-screen .player-card.is-picked-player-card {
   border-color: var(--identity-color, #ffd166);
   box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--identity-color, #ffd166) 60%, transparent),
-    0 0 22px color-mix(in srgb, var(--identity-color, #ffd166) 45%, transparent),
+    0 0 0 2px var(--identity-color, #ffd166),
+    0 0 24px var(--identity-color, #ffd166),
     0 16px 34px rgba(2, 6, 23, 0.18);
-}
-
-.lobby-screen .player-card--selected {
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--identity-color, #ffd166) 28%, transparent), transparent 42%),
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.38), transparent 36%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--identity-color, #ffd166) 30%, transparent), transparent 45%),
     rgba(15, 23, 42, 0.96);
 }
 
@@ -411,7 +408,7 @@ button {
   color: #cbd5e1;
 }
 
-.lobby-screen .player-card--selected .selection-badge {
+.lobby-screen .player-card.is-picked-player-card .selection-badge {
   background: var(--identity-color, #ffd166);
   color: #020617;
   font-weight: 900;
@@ -455,39 +452,6 @@ button {
   width: 12px;
   height: 12px;
   border-width: 1px;
-}
-
-.selection-button {
-  width: 100%;
-  min-height: 38px;
-  border: 1px solid rgba(20, 33, 61, 0.14);
-  border-radius: 8px;
-  background: #14213d;
-  color: #ffffff;
-  cursor: pointer;
-  font-weight: 900;
-}
-
-.lobby-screen .selection-button {
-  width: fit-content;
-  min-height: 30px;
-  justify-self: start;
-  border-color: rgba(148, 163, 184, 0.24);
-  background: rgba(148, 163, 184, 0.14);
-  color: #dff6ff;
-  padding: 0 10px;
-}
-
-.selection-button.is-picked {
-  border-color: rgba(235, 87, 87, 0.32);
-  background: rgba(255, 236, 236, 0.95);
-  color: #b4232a;
-}
-
-.lobby-screen .selection-button.is-picked {
-  border-color: var(--identity-color, #ffd166);
-  background: color-mix(in srgb, var(--identity-color, #ffd166) 16%, rgba(2, 6, 23, 0.88));
-  color: #f8fafc;
 }
 
 .top-dot {
@@ -1624,12 +1588,6 @@ button {
     width: 10px;
     height: 10px;
     border-width: 1px;
-  }
-
-  .selection-button {
-    min-height: 26px;
-    border-radius: 7px;
-    font-size: 0.64rem;
   }
 
   .nickname-row {
